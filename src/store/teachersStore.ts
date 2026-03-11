@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { firestoreAdapter } from "@/storage/firestoreAdapter";
-import { SEED_PERIODS } from "@/data/seed";
+import { SEED_PERIODS, SEED_TEACHERS } from "@/data/seed";
 import type { Teacher, Period } from "@/types";
 
 interface TeachersState {
@@ -19,6 +19,7 @@ interface TeachersState {
   updatePeriod: (p: Period) => Promise<void>;
   removePeriod: (id: string) => Promise<void>;
   seedPeriods: () => Promise<void>;
+  resetToSeed: () => Promise<void>;
 }
 
 export const useTeachersStore = create<TeachersState>((set, get) => ({
@@ -42,6 +43,20 @@ export const useTeachersStore = create<TeachersState>((set, get) => ({
   async seedPeriods() {
     await Promise.all(SEED_PERIODS.map((p) => firestoreAdapter.setDoc("periods", p)));
     set({ periods: SEED_PERIODS, loaded: true });
+  },
+
+  async resetToSeed() {
+    // Clear existing teachers and periods from Firestore
+    const existingTeachers = get().teachers;
+    const existingPeriods = get().periods;
+    await Promise.all(existingTeachers.map((t) => firestoreAdapter.deleteDoc("teachers", t.id)));
+    await Promise.all(existingPeriods.map((p) => firestoreAdapter.deleteDoc("periods", p.id)));
+
+    // Write seed data
+    await Promise.all(SEED_TEACHERS.map((t) => firestoreAdapter.setDoc("teachers", t)));
+    await Promise.all(SEED_PERIODS.map((p) => firestoreAdapter.setDoc("periods", p)));
+
+    set({ teachers: SEED_TEACHERS, periods: SEED_PERIODS });
   },
 
   async addTeacher(t) {
