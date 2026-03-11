@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-bg text-text font-sans;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  input, select, textarea {
+    @apply bg-surface2 border border-border2 text-text rounded-md px-3 py-2 text-sm outline-none;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    @apply border-accent/60;
+  }
+  button { font-family: inherit; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-border2 rounded-full; }
+}
+
+@layer utilities {
+  .toast-enter {
+    animation: slideUp .22s ease;
+  }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
