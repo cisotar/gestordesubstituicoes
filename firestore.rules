@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Leitura pública para todos
+    match /meta/{doc}      { allow read: if true; allow write: if isAdmin(); }
+    match /teachers/{doc}  { allow read: if true; allow write: if isAdmin(); }
+    match /schedules/{doc} { allow read: if true; allow write: if isAdmin(); }
+    match /absences/{doc}  { allow read: if true; allow write: if isAdmin(); }
+    match /history/{doc}   { allow read: if true; allow write: if isAdmin(); }
+
+    // Admins só admins leem e escrevem
+    match /admins/{doc}    { allow read, write: if isAdmin(); }
+
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower().replace('.','_').replace('#','_').replace('$','_').replace('/','_').replace('[','_').replace(']','_')));
+    }
+  }
+}

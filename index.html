@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GestãoEscolar — Faltas e Substituições</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- LOADING SCREEN -->
+  <div id="app-loading">
+    <div style="text-align:center">
+      <div class="loading-spinner"></div>
+      <div style="font-size:15px;font-weight:600;color:var(--t2);margin-top:16px">Carregando GestãoEscolar…</div>
+      <div style="font-size:13px;color:var(--t3);margin-top:6px">Conectando ao banco de dados</div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav" style="display:none" id="main-nav">
+    <div class="nav-in">
+      <div class="nav-logo">🏫 <span>Gestão</span>Escolar</div>
+
+      <!-- Tabs de navegação (visíveis para todos) -->
+      <button class="ntab on" data-action="nav" data-page="calendar">📅 Calendário</button>
+      <button class="ntab"    data-action="nav" data-page="absences">⚠️ Ausências</button>
+      <button class="ntab"    data-action="nav" data-page="dashboard">📊 Dashboard</button>
+
+      <!-- Somente admins veem Configurações -->
+      <button class="ntab" data-action="nav" data-page="settings"
+        data-admin-only style="display:none">⚙️ Configurações</button>
+
+      <div class="nav-bc" id="nav-bc">
+        <span>›</span>
+        <span id="nav-bc-name"></span>
+      </div>
+
+      <div class="nav-end">
+        <span class="nav-pill"      id="nav-stats"></span>
+        <span class="nav-pill warn" id="nav-warn" style="display:none"></span>
+        <!-- Barra de autenticação -->
+        <div id="auth-bar"></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- PAGES -->
+  <div class="wrap" style="display:none">
+
+    <div class="pg on" id="pg-calendar">
+      <div class="ph">
+        <h2>Calendário Semanal</h2>
+        <p>Visão geral de todas as aulas. Clique em um professor para abrir o calendário individual.</p>
+      </div>
+      <div id="cal-out"></div>
+    </div>
+
+    <div class="pg" id="pg-teacher">
+      <div id="teacher-out"></div>
+    </div>
+
+    <div class="pg" id="pg-absences"></div>
+
+    <div class="pg" id="pg-dashboard"></div>
+
+    <div class="pg" id="pg-settings">
+      <div class="ph"><h2>Configurações</h2></div>
+      <div class="s-tabs">
+        <button class="stab on" data-action="stab" data-tab="segments">🏫 Segmentos</button>
+        <button class="stab"    data-action="stab" data-tab="areas">🎨 Áreas</button>
+        <button class="stab"    data-action="stab" data-tab="subjects">📖 Matérias</button>
+        <button class="stab"    data-action="stab" data-tab="teachers">👩‍🏫 Professores</button>
+        <button class="stab"    data-action="stab" data-tab="periods">⏰ Períodos</button>
+        <button class="stab"    data-action="stab" data-tab="schedules">📚 Horários de Aula</button>
+      </div>
+      <div id="settings-out"></div>
+    </div>
+
+  </div>
+
+  <!-- MODAL -->
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modal-body"></div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Mostra nav e wrap após o app.js carregar -->
+  <script type="module">
+    // app.js desativa o loading e mostra o wrap.
+    // Mostramos a nav aqui depois de um tick para evitar flash.
+    requestAnimationFrame(() => {
+      const nav = document.getElementById('main-nav');
+      if (nav) nav.style.display = '';
+    });
+  </script>
+</body>
+</html>
