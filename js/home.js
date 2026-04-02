@@ -383,7 +383,6 @@ function _gridViewB(dates, mine, periodos, absenceSlots, subMap, teacherId, cv) 
       </table>
     </div>`;
 }
-}
 
 // ─── Modal do dia ─────────────────────────────────────────────────────────────
 
