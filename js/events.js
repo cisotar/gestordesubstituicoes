@@ -11,7 +11,7 @@ import {
   addAreasBulk, removeArea,
   addSubjectsBulk, removeSubject,
   addSegment, removeSegment, addGrade, removeGrade,
-  addClassToGrade, removeClassFromGrade, setClassTurno,
+  addClassToGrade, removeClassFromGrade, setSegmentTurno,
   addSchedule, removeSchedule,
   savePeriodCfg, addIntervalo, removeIntervalo, saveTeacherSubjects,
 } from './actions.js';
@@ -102,7 +102,7 @@ const ACTION_MAP = {
   stab:                el => setSettingsTab(el.dataset.tab),
 
   // Segmentos
-  addSegment:          ()  => addSegment(v('new-seg-name')),
+  addSegment:          ()  => addSegment(v('new-seg-name'), document.getElementById('new-seg-turno')?.value ?? 'manha'),
   removeSegment:       el  => removeSegment(el.dataset.id),
   addGrade:            el  => { addGrade(el.dataset.seg, v(`grade-inp-${el.dataset.seg}`)); },
   removeGrade:         el  => removeGrade(el.dataset.seg, el.dataset.val),
@@ -115,7 +115,7 @@ const ACTION_MAP = {
     if (inp) { inp.value = ''; inp.focus(); }
   },
   removeClassFromGrade: el => removeClassFromGrade(el.dataset.seg, el.dataset.grade, el.dataset.val),
-  setClassTurno:        el => setClassTurno(el.dataset.seg, el.dataset.grade, el.dataset.letter, el.value),
+  setSegmentTurno:      el => setSegmentTurno(el.dataset.seg, el.value),
 
   // Períodos — campos inline (disparam no `change`)
   editPeriodoCfg:  el => handlePeriodoCfgChange(el),

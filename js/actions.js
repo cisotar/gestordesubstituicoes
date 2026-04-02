@@ -7,16 +7,31 @@ import { defaultCfg }          from './periods.js';
 
 // ─── Segmentos ────────────────────────────────────────────────────────────────
 
-export function addSegment(name) {
+export function addSegment(name, turno = 'manha') {
   if (!name?.trim()) return;
-  state.segments.push({ id: uid(), name: name.trim(), grades: [] });
-  // Inicializa config de períodos para o novo segmento
+  const seg = { id: uid(), name: name.trim(), turno, grades: [] };
+  state.segments.push(seg);
+  // Inicializa config de períodos só para o turno do segmento
   if (!state.periodConfigs) state.periodConfigs = {};
-  const segId = state.segments[state.segments.length - 1].id;
-  state.periodConfigs[segId] = {
-    manha: defaultCfg('manha'),
-    tarde: defaultCfg('tarde'),
+  state.periodConfigs[seg.id] = {
+    [turno]: defaultCfg(turno),
   };
+  saveState(); renderSettings();
+}
+
+/** Define o turno de um segmento e migra as classes automaticamente */
+export function setSegmentTurno(segId, turno) {
+  const seg = state.segments.find(s => s.id === segId);
+  if (!seg) return;
+  seg.turno = turno;
+  // Atualiza o turno de todas as classes do segmento
+  seg.grades.forEach(g => g.classes.forEach(c => { c.turno = turno; }));
+  // Garante config de período para o turno
+  if (!state.periodConfigs)        state.periodConfigs = {};
+  if (!state.periodConfigs[segId]) state.periodConfigs[segId] = {};
+  if (!state.periodConfigs[segId][turno]) {
+    state.periodConfigs[segId][turno] = defaultCfg(turno);
+  }
   saveState(); renderSettings();
 }
 
@@ -42,13 +57,14 @@ export function removeGrade(segId, gradeName) {
   saveState(); renderSettings();
 }
 
-/** Adiciona uma letra de turma a uma série, com turno */
-export function addClassToGrade(segId, gradeName, letter, turno = 'manha') {
+/** Adiciona uma letra de turma a uma série — turno herdado do segmento */
+export function addClassToGrade(segId, gradeName, letter) {
   const seg   = state.segments.find(s => s.id === segId);
   const grade = seg?.grades.find(g => g.name === gradeName);
   if (!grade || !letter?.trim()) return;
-  const up = letter.trim().toUpperCase();
+  const up    = letter.trim().toUpperCase();
   if (grade.classes.find(c => c.letter === up)) return;
+  const turno = seg.turno ?? 'manha';
   grade.classes.push({ letter: up, turno });
   grade.classes.sort((a, b) => a.letter.localeCompare(b.letter));
   saveState(); renderSettings();

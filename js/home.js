@@ -153,17 +153,11 @@ function _renderWeekGrid(teacherId, seg) {
   const dates = weekDates();
   const mine  = state.schedules.filter(s => s.teacherId === teacherId);
 
-  // Períodos do segmento, dedupados, ordenados por horário de início
-  const seen = new Set();
-  const periodos = ['manha','tarde'].flatMap(turno =>
-    getPeriodos(seg.id, turno)
-      .filter(p => !p.isIntervalo)
-      .map(p => ({ ...p, turno, slot: `${seg.id}|${turno}|${p.aulaIdx}` }))
-  ).filter(p => {
-    const key = `${p.turno}|${p.aulaIdx}`;
-    if (seen.has(key)) return false;
-    seen.add(key); return true;
-  }).sort((a, b) => a.inicio.localeCompare(b.inicio));
+  // Períodos do segmento — usa o turno definido no segmento
+  const segTurno = seg.turno ?? 'manha';
+  const periodos = getPeriodos(seg.id, segTurno)
+    .filter(p => !p.isIntervalo)
+    .map(p => ({ ...p, turno: segTurno, slot: `${seg.id}|${segTurno}|${p.aulaIdx}` }));
 
   // Ausências registradas na semana
   const absenceSlots = new Set(

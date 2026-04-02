@@ -244,17 +244,13 @@ export function renderSettings() {
 function tabSegments() {
   const segCards = state.segments.map(seg => {
     const totalTurmas = seg.grades.reduce((acc, g) => acc + g.classes.length, 0);
+    const segTurno    = seg.turno ?? 'manha';
 
     const gradeRows = seg.grades.map(grade => {
       const classPills = grade.classes.map(cls => `
         <div class="class-pill-wrap">
           <span class="tag-pill">
             ${h(grade.name)} ${h(cls.letter)}
-            <select class="turno-sel" data-action="setClassTurno"
-              data-seg="${seg.id}" data-grade="${h(grade.name)}" data-letter="${h(cls.letter)}">
-              <option value="manha" ${cls.turno === 'manha' ? 'selected' : ''}>🌅 Manhã</option>
-              <option value="tarde" ${cls.turno === 'tarde' ? 'selected' : ''}>🌇 Tarde</option>
-            </select>
             <button class="tag-rm" data-action="removeClassFromGrade"
               data-seg="${seg.id}" data-grade="${h(grade.name)}" data-val="${h(cls.letter)}">×</button>
           </span>
@@ -268,11 +264,6 @@ function tabSegments() {
               <input class="inp grade-class-inp"
                 id="cls-inp-${seg.id}-${h(grade.name).replace(/\W/g,'_')}"
                 placeholder="Letra (A, B…)" maxlength="3">
-              <select class="inp" style="width:90px;padding:5px 6px;font-size:12px"
-                id="cls-turno-${seg.id}-${h(grade.name).replace(/\W/g,'_')}">
-                <option value="manha">🌅 Manhã</option>
-                <option value="tarde">🌇 Tarde</option>
-              </select>
               <button class="btn btn-dark btn-xs" data-action="addClassToGrade"
                 data-seg="${seg.id}" data-grade="${h(grade.name)}">+</button>
               <button class="btn-del" data-action="removeGrade"
@@ -292,7 +283,17 @@ function tabSegments() {
             <h3 class="seg-title">${h(seg.name)}</h3>
             <div class="seg-meta">${seg.grades.length} série${seg.grades.length !== 1 ? 's' : ''} · ${totalTurmas} turma${totalTurmas !== 1 ? 's' : ''}</div>
           </div>
-          <button class="btn-del" data-action="removeSegment" data-id="${seg.id}">✕</button>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="fld" style="margin:0;flex-direction:row;align-items:center;gap:8px">
+              <label class="lbl" style="margin:0;white-space:nowrap">Turno:</label>
+              <select class="inp" style="width:120px;padding:5px 8px;font-size:13px"
+                data-action="setSegmentTurno" data-seg="${seg.id}">
+                <option value="manha" ${segTurno === 'manha' ? 'selected' : ''}>🌅 Manhã</option>
+                <option value="tarde" ${segTurno === 'tarde' ? 'selected' : ''}>🌇 Tarde</option>
+              </select>
+            </div>
+            <button class="btn-del" data-action="removeSegment" data-id="${seg.id}">✕</button>
+          </div>
         </div>
         <div class="grade-list">${gradeRows || '<p class="no-grades">Nenhuma série. Adicione abaixo.</p>'}</div>
         <div class="add-grade-row">
@@ -307,9 +308,7 @@ function tabSegments() {
             <div class="lbl" style="margin-bottom:6px">Turmas cadastradas (${totalTurmas})</div>
             <div style="display:flex;flex-wrap:wrap;gap:4px">
               ${seg.grades.flatMap(g => g.classes.map(c =>
-                `<span class="turma-chip" title="${c.turno === 'tarde' ? 'Tarde' : 'Manhã'}">
-                  ${h(g.name)} ${h(c.letter)} ${c.turno === 'tarde' ? '🌇' : '🌅'}
-                </span>`
+                `<span class="turma-chip">${h(g.name)} ${h(c.letter)}</span>`
               )).join('')}
             </div>
           </div>` : ''}
@@ -321,15 +320,18 @@ function tabSegments() {
       ${segCards}
       <div class="card card-b" style="background:var(--surf2)">
         <h3 style="margin-bottom:12px;font-size:14px">Novo Segmento</h3>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center">
           <input class="inp" id="new-seg-name" placeholder="Ex: Educação Infantil" style="flex:1">
+          <select class="inp" id="new-seg-turno" style="width:120px;padding:5px 8px;font-size:13px">
+            <option value="manha">🌅 Manhã</option>
+            <option value="tarde">🌇 Tarde</option>
+          </select>
           <button class="btn btn-dark" data-action="addSegment">Adicionar</button>
         </div>
       </div>
     </div>`;
 }
 
-// ── Tab: Períodos ─────────────────────────────────────────────────────────────
 
 function tabPeriods() {
   if (state.segments.length === 0) {
@@ -339,80 +341,77 @@ function tabPeriods() {
     </div>`;
   }
 
-  const turnos = [
-    { id: 'manha', label: '🌅 Manhã' },
-    { id: 'tarde', label: '🌇 Tarde' },
-  ];
-
   const segBlocks = state.segments.map(seg => {
-    const turnoBlocks = turnos.map(({ id: turno, label: turnoLabel }) => {
-      const cfg      = getCfg(seg.id, turno);
-      const periodos = gerarPeriodos(cfg);
-      const ivRows   = (cfg.intervalos || []).map((iv, ii) => `
-        <div class="iv-row">
-          <span class="iv-lbl">após aula nº</span>
-          <input class="inp iv-inp" type="number" min="1" max="${cfg.qtd}" value="${iv.apos}"
-            data-action="editIvApos" data-seg="${seg.id}" data-turno="${turno}" data-idx="${ii}">
-          <span class="iv-lbl">início (opcional)</span>
-          <input class="inp iv-inp" type="time" value="${iv.inicio || ''}"
-            data-action="editIvInicio" data-seg="${seg.id}" data-turno="${turno}" data-idx="${ii}">
-          <span class="iv-lbl">duração (min)</span>
-          <input class="inp iv-inp" type="number" min="1" max="120" value="${iv.duracao || 20}"
-            data-action="editIvDuracao" data-seg="${seg.id}" data-turno="${turno}" data-idx="${ii}">
-          <button class="btn-del" data-action="removeIntervalo"
-            data-seg="${seg.id}" data-turno="${turno}" data-idx="${ii}">✕</button>
-        </div>`).join('');
+    const turno      = seg.turno ?? 'manha';
+    const turnoLabel = turno === 'tarde' ? '🌇 Tarde' : '🌅 Manhã';
+    const cfg        = getCfg(seg.id, turno);
+    const periodos   = gerarPeriodos(cfg);
 
-      const preview = periodos.map(p => p.isIntervalo
-        ? `<div class="per-preview-iv">☕ Intervalo ${h(p.inicio)}–${h(p.fim)} (${p.duracao}min)</div>`
-        : `<div class="per-preview-item"><strong>${h(p.label)}</strong> ${h(p.inicio)}–${h(p.fim)}</div>`
-      ).join('');
+    const ivRows = (cfg.intervalos || []).map((iv, ii) => `
+      <div class="iv-row">
+        <span class="iv-lbl">após aula nº</span>
+        <input class="inp iv-inp" type="number" min="1" max="${cfg.qtd}" value="${iv.apos}"
+          data-action="editIvApos" data-seg="${seg.id}" data-turno="${turno}" data-idx="${ii}">
+        <span class="iv-lbl">início (opcional)</span>
+        <input class="inp iv-inp" type="time" value="${iv.inicio || ''}"
+          data-action="editIvInicio" data-seg="${seg.id}" data-turno="${turno}" data-idx="${ii}">
+        <span class="iv-lbl">duração (min)</span>
+        <input class="inp iv-inp" type="number" min="1" max="120" value="${iv.duracao || 20}"
+          data-action="editIvDuracao" data-seg="${seg.id}" data-turno="${turno}" data-idx="${ii}">
+        <button class="btn-del" data-action="removeIntervalo"
+          data-seg="${seg.id}" data-turno="${turno}" data-idx="${ii}">✕</button>
+      </div>`).join('');
 
-      return `
-        <div class="periodo-turno-block">
-          <div class="periodo-turno-hdr">${turnoLabel}</div>
-          <div class="periodo-cfg-grid">
-            <div class="fld">
-              <label class="lbl">Horário de início</label>
-              <input class="inp" type="time" value="${cfg.inicio}"
-                data-action="editPeriodoCfg" data-seg="${seg.id}" data-turno="${turno}" data-campo="inicio">
-            </div>
-            <div class="fld">
-              <label class="lbl">Duração por aula (min)</label>
-              <input class="inp" type="number" min="30" max="120" value="${cfg.duracao}"
-                data-action="editPeriodoCfg" data-seg="${seg.id}" data-turno="${turno}" data-campo="duracao">
-            </div>
-            <div class="fld">
-              <label class="lbl">Número de aulas</label>
-              <input class="inp" type="number" min="1" max="12" value="${cfg.qtd}"
-                data-action="editPeriodoCfg" data-seg="${seg.id}" data-turno="${turno}" data-campo="qtd">
-            </div>
-          </div>
-          <div style="margin:14px 0 8px">
-            <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Intervalos</div>
-            <div id="ivs-${seg.id}-${turno}">
-              ${ivRows || '<p style="font-size:13px;color:var(--t3);margin:0">Nenhum intervalo.</p>'}
-            </div>
-            <button class="btn btn-ghost btn-xs" style="margin-top:6px"
-              data-action="addIntervalo" data-seg="${seg.id}" data-turno="${turno}">+ Intervalo</button>
-          </div>
-          <div class="per-preview" id="preview-${seg.id}-${turno}">${preview}</div>
-        </div>`;
-    }).join('');
+    const preview = periodos.map(p => p.isIntervalo
+      ? `<div class="per-preview-iv">☕ Intervalo ${h(p.inicio)}–${h(p.fim)} (${p.duracao}min)</div>`
+      : `<div class="per-preview-item"><strong>${h(p.label)}</strong> ${h(p.inicio)}–${h(p.fim)}</div>`
+    ).join('');
 
     return `
-      <div class="card card-b" style="margin-bottom:20px">
-        <h3 style="margin-bottom:18px">${h(seg.name)}</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-          ${turnoBlocks}
+      <div class="card card-b" style="margin-bottom:20px;max-width:560px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+          <h3>${h(seg.name)}</h3>
+          <span style="font-size:12px;padding:3px 10px;border-radius:20px;font-weight:600;
+            background:${turno === 'tarde' ? '#FEF3C7' : '#DBEAFE'};
+            color:${turno === 'tarde' ? '#78350F' : '#1E3A8A'}">
+            ${turnoLabel}
+          </span>
+          <span style="font-size:11px;color:var(--t3)">
+            Para alterar o turno, vá em 🏫 Segmentos
+          </span>
         </div>
+        <div class="periodo-cfg-grid">
+          <div class="fld">
+            <label class="lbl">Horário de início</label>
+            <input class="inp" type="time" value="${cfg.inicio}"
+              data-action="editPeriodoCfg" data-seg="${seg.id}" data-turno="${turno}" data-campo="inicio">
+          </div>
+          <div class="fld">
+            <label class="lbl">Duração por aula (min)</label>
+            <input class="inp" type="number" min="30" max="120" value="${cfg.duracao}"
+              data-action="editPeriodoCfg" data-seg="${seg.id}" data-turno="${turno}" data-campo="duracao">
+          </div>
+          <div class="fld">
+            <label class="lbl">Número de aulas</label>
+            <input class="inp" type="number" min="1" max="12" value="${cfg.qtd}"
+              data-action="editPeriodoCfg" data-seg="${seg.id}" data-turno="${turno}" data-campo="qtd">
+          </div>
+        </div>
+        <div style="margin:14px 0 8px">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Intervalos</div>
+          <div id="ivs-${seg.id}-${turno}">
+            ${ivRows || '<p style="font-size:13px;color:var(--t3);margin:0">Nenhum intervalo.</p>'}
+          </div>
+          <button class="btn btn-ghost btn-xs" style="margin-top:6px"
+            data-action="addIntervalo" data-seg="${seg.id}" data-turno="${turno}">+ Intervalo</button>
+        </div>
+        <div class="per-preview" id="preview-${seg.id}-${turno}">${preview}</div>
       </div>`;
   }).join('');
 
-  return `<div style="max-width:900px">${segBlocks}</div>`;
+  return `<div style="max-width:600px">${segBlocks}</div>`;
 }
 
-// ── Tab: Áreas ────────────────────────────────────────────────────────────────
 
 function tabAreas() {
   const list = state.areas.map(area => {
@@ -669,26 +668,10 @@ function emptyTabGuard(msg, tab, label) {
 function buildScheduleGrid(seg, teacherId) {
   if (!seg) return '';
 
-  // Coleta todos os períodos únicos do segmento (ambos turnos), ordenados por início
-  const allPeriodos = ['manha', 'tarde'].flatMap(turno => {
-    const aulas = getPeriodos(seg.id, turno);
-    return aulas.map(p => ({ ...p, turno, slot: `${seg.id}|${turno}|${p.aulaIdx}` }));
-  }).sort((a, b) => {
-    if (a.isIntervalo && b.isIntervalo) return a.inicio.localeCompare(b.inicio);
-    if (a.isIntervalo) return 0; // keep relative position handled below
-    if (b.isIntervalo) return 0;
-    return a.inicio.localeCompare(b.inicio);
-  });
-
-  // Remove períodos duplicados (mesmo inicio+fim) e intercala intervalos na posição certa
-  const seen = new Set();
-  const periodos = [];
-  for (const p of allPeriodos) {
-    const key = p.isIntervalo ? `iv:${p.inicio}` : `au:${p.inicio}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    periodos.push(p);
-  }
+  // Períodos do segmento — usa o turno definido no segmento
+  const segTurno = seg.turno ?? 'manha';
+  const periodos = getPeriodos(seg.id, segTurno)
+    .map(p => ({ ...p, turno: segTurno, slot: `${seg.id}|${segTurno}|${p.aulaIdx}` }));
 
   if (periodos.filter(p => !p.isIntervalo).length === 0) {
     return `<div class="card card-b" style="padding:24px;color:var(--t2);text-align:center">
