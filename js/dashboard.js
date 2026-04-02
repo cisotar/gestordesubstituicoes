@@ -63,7 +63,7 @@ function statCard(icon, label, value, variant) {
 
 function renderAlerts(overloaded) {
   const items = overloaded.map(({ teacher, schedules, level }) => {
-    const cv = colorOf(teacher.area);
+    const cv = colorOfTeacher(teacher);
     const bg = level === 'danger' ? '#FFF1EE' : '#FFFBEB';
     const bd = level === 'danger' ? '#FDB8A8' : '#FCD34D';
     const tx = level === 'danger' ? '#7F1A06' : '#78350F';
