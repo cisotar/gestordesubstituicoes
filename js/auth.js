@@ -55,22 +55,34 @@ export function initAuth() {
 async function _resolveRole(user) {
   // 1. Admin?
   if (await isAdmin(user.email)) {
-    authState.role   = 'admin';
-    authState.pendingCt = (await listPendingTeachers()).length;
+    authState.role = 'admin';
+    try {
+      authState.pendingCt = (await listPendingTeachers()).length;
+    } catch (e) {
+      authState.pendingCt = 0;
+    }
     return;
   }
 
   // 2. Professor aprovado?
-  const teacher = await getTeacherByEmail(user.email);
-  if (teacher && teacher.status === 'approved') {
-    authState.role    = 'teacher';
-    authState.teacher = teacher;
-    return;
+  try {
+    const teacher = await getTeacherByEmail(user.email);
+    if (teacher && teacher.status === 'approved') {
+      authState.role    = 'teacher';
+      authState.teacher = teacher;
+      return;
+    }
+  } catch (e) {
+    console.warn('[auth] Falha ao buscar professor:', e);
   }
 
   // 3. Pendente ou novo → registra solicitação
   authState.role = 'pending';
-  await requestTeacherAccess(user);
+  try {
+    await requestTeacherAccess(user);
+  } catch (e) {
+    console.warn('[auth] Falha ao registrar acesso pendente:', e);
+  }
 }
 
 // ─── Login / Logout ───────────────────────────────────────────────────────────
