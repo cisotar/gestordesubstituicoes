@@ -1272,3 +1272,66 @@ code {
 }
 .day-modal-row:last-child { border-bottom: none; }
 .day-modal-absent { background: #FFF8F8; border-radius: var(--r); padding: 14px 10px; }
+
+/* ═══ HOME — VIEW C (cards por dia) ══════════════════════════════════════════ */
+
+.home-day-col {
+  border: 1.5px solid var(--bdr);
+  border-radius: var(--rl);
+  background: var(--surf);
+  padding: 10px 8px;
+  transition: border-color .12s;
+}
+.home-day-today-col  { border-color: var(--accent); background: var(--accent-l); }
+.home-day-absent-col { border-color: #F7C1C1; }
+
+.home-day-col-hdr {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--bdr);
+}
+
+.home-aula-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--bdr);
+  transition: background .1s;
+  border-radius: 4px;
+}
+.home-aula-row:last-child { border-bottom: none; }
+.home-aula-row[data-home-action]:hover { background: var(--surf2); }
+.home-aula-row.home-aula-absent { background: #FFF0F0; border-radius: 5px; padding: 5px 4px; }
+
+.home-aula-n {
+  font-size: 10px;
+  color: var(--t3);
+  font-family: 'DM Mono', monospace;
+  min-width: 22px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.home-aula-estudo {
+  font-size: 10px;
+  color: var(--t3);
+  font-style: italic;
+  padding-top: 2px;
+}
+
+/* Toggle de visualização */
+.view-toggle {
+  padding: 5px 10px;
+  font-size: 13px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--t3);
+  transition: all .12s;
+  font-family: 'Figtree', sans-serif;
+}
+.view-toggle.on { background: var(--navy); color: #fff; }
+.view-toggle:hover:not(.on) { background: var(--surf2); color: var(--t1); }
