@@ -29,6 +29,10 @@
       <button class="ntab"    data-action="nav" data-page="absences">⚠️ Ausências</button>
       <button class="ntab"    data-action="nav" data-page="dashboard">📊 Dashboard</button>
 
+      <!-- Visível para professores aprovados -->
+      <button class="ntab" data-action="nav" data-page="my-schedule"
+        data-teacher-or-admin style="display:none">📚 Meu Horário</button>
+
       <!-- Somente admins veem Configurações -->
       <button class="ntab" data-action="nav" data-page="settings"
         data-admin-only style="display:none">⚙️ Configurações</button>
@@ -63,6 +67,8 @@
     </div>
 
     <div class="pg" id="pg-absences"></div>
+
+    <div class="pg" id="pg-my-schedule"></div>
 
     <div class="pg" id="pg-dashboard"></div>
 

@@ -173,6 +173,29 @@ export function registerEvents() {
     const abEl = e.target.closest('[data-ab-action]');
     if (abEl) { handleAbsenceAction(abEl.dataset.abAction, abEl); return; }
 
+    // My Schedule actions
+    const mysEl = e.target.closest('[data-mys-action]');
+    if (mysEl) {
+      const a = mysEl.dataset.mysAction;
+      import('./my-schedule.js').then(({ openMyScheduleModal, removeMySchedule, onMysGradeChange }) => {
+        if (a === 'openAdd') {
+          // Não abre se o clique foi no botão de remover interno
+          if (e.target.closest('[data-mys-action="remove"]')) return;
+          openMyScheduleModal(mysEl.dataset.seg, mysEl.dataset.turno,
+            Number(mysEl.dataset.aula), mysEl.dataset.day, mysEl.dataset.teacher);
+        } else if (a === 'remove') {
+          removeMySchedule(mysEl.dataset.id, mysEl.dataset.seg, mysEl.dataset.turno,
+            Number(mysEl.dataset.aula), mysEl.dataset.day, mysEl.dataset.teacher);
+        } else if (a === 'selectSeg') {
+          import('./my-schedule.js').then(({ mySchedUI, renderMySchedule }) => {
+            mySchedUI.segmentId = mysEl.dataset.seg;
+            renderMySchedule();
+          });
+        }
+      });
+      return;
+    }
+
     // Schedule modal actions
     const msEl = e.target.closest('[data-ms-action]');
     if (msEl) {

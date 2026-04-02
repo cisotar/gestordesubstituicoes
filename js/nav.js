@@ -9,7 +9,8 @@ export function updateNav() {
   const subCount    = Object.keys(state.subs).length;
   const overloaded  = getOverloadedTeachers();
 
-  document.getElementById('nav-stats').textContent =
+  const statsEl = document.getElementById('nav-stats');
+  if (statsEl) statsEl.textContent =
     `${state.teachers.length} prof · ${state.schedules.length} aulas`;
 
   const warn = document.getElementById('nav-warn');
@@ -51,11 +52,14 @@ export function navigate(page, tid = null) {
 
   updateNav();
 
-  if (page === 'dashboard') renderDashboard();
+  if (page === 'dashboard')    renderDashboard();
   else if (page === 'absences') {
     const el = document.getElementById('pg-absences');
     if (el && el.innerHTML === '') renderAbsenceList();
     else renderAbsenceList();
+  }
+  else if (page === 'my-schedule') {
+    import('./my-schedule.js').then(({ renderMySchedule }) => renderMySchedule());
   }
   else renderPage();
 }
