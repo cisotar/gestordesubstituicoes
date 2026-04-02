@@ -156,6 +156,8 @@ export async function saveConfig() {
 /** E-mails com permissão de admin permanente (sem precisar estar no Firestore) */
 const HARDCODED_ADMINS = [
   'contato.tarciso@gmail.com',
+  'tarciso@prof.educacao.sp.gov.br',
+  'fernandamarquesi@prof.educacao.sp.gov.br',
 ];
 
 /** Verifica se um e-mail é administrador */
