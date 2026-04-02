@@ -1,4 +1,3 @@
-# Auto-deploy para Firebase Hosting + Firestore Rules ao fazer push em main
 name: Deploy to Firebase on merge
 
 on:
@@ -11,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          node-version: '24'
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
@@ -27,3 +28,5 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GESTORDESUBSTITUICOES }}
           channelId: live
           projectId: gestordesubstituicoes
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
