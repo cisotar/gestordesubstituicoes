@@ -1335,3 +1335,21 @@ code {
 }
 .view-toggle.on { background: var(--navy); color: #fff; }
 .view-toggle:hover:not(.on) { background: var(--surf2); color: var(--t1); }
+
+/* ═══ CANDIDATE COMPACT CARD ════════════════════════════════════════════════ */
+.cand-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--bdr);
+  background: var(--surf);
+  cursor: pointer;
+  font-family: 'Figtree', sans-serif;
+  transition: all .12s;
+  text-align: left;
+}
+.cand-compact:hover { border-color: var(--navy); background: var(--surf2); }
+.cand-compact.sel   { border-color: var(--ok-b); background: var(--ok-l); }

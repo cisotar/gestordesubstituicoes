@@ -378,6 +378,63 @@ function _gridViewB(dates, mine, periodos, absenceSlots, subMap, teacherId, cv) 
     </div>`;
 }
 
+// ─── Helpers de candidatos ────────────────────────────────────────────────────
+
+/**
+ * Retorna top 3 candidatos ranqueados para um slot.
+ * Exibe carga detalhada: aulas cadastradas + subs assumidas.
+ */
+function _top3(teacherId, date, slot, subjectId) {
+  return rankCandidates(teacherId, date, slot, subjectId).slice(0, 3);
+}
+
+function _renderCandCard(c, absenceId, slotId, date, teacherId, compact = false) {
+  const tc     = colorOfTeacher(c.teacher);
+  const isCur  = c.teacher.id === (() => {
+    const ab = state.absences?.find(a => a.id === absenceId);
+    return ab?.slots.find(s => s.id === slotId)?.substituteId;
+  })();
+  const icon   = c.match === 'subject' ? '⭐ mesma matéria' : c.match === 'area' ? '🔵 mesma área' : '⚪ outra área';
+  const loadTxt = `${c.load} aula${c.load !== 1 ? 's' : ''}/sem.`;
+
+  if (compact) {
+    return `
+      <button class="cand-compact ${isCur ? 'sel' : ''}"
+        data-pick-abs="${absenceId}" data-pick-slt="${slotId}"
+        data-pick-tid="${c.teacher.id}"
+        data-pick-date="${date}" data-pick-teacher="${teacherId}">
+        <span class="cand-dot" style="background:${tc.dt};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            ${h(c.teacher.name)}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:1px">
+            ${icon} · <strong>${loadTxt}</strong></div>
+        </div>
+        ${isCur
+          ? '<span style="font-size:11px;color:var(--ok);font-weight:700;flex-shrink:0">✓</span>'
+          : '<span style="color:var(--t3);font-size:16px;flex-shrink:0">›</span>'}
+      </button>`;
+  }
+
+  return `
+    <button class="cand ${isCur ? 'sel' : ''}"
+      data-pick-abs="${absenceId}" data-pick-slt="${slotId}"
+      data-pick-tid="${c.teacher.id}"
+      data-pick-date="${date}" data-pick-teacher="${teacherId}">
+      <span class="cand-dot" style="background:${tc.dt}"></span>
+      <div style="flex:1">
+        <div class="cand-name">${h(c.teacher.name)}</div>
+        <div class="cand-area">${icon}
+          <span style="margin-left:8px;font-size:11px;color:var(--t1);font-weight:700">
+            ${loadTxt}
+          </span>
+        </div>
+      </div>
+      ${isCur ? '<span class="cand-cur">atual ✓</span>' : ''}
+      <span style="color:var(--t3);font-size:18px">›</span>
+    </button>`;
+}
+
 // ─── Modal do dia ─────────────────────────────────────────────────────────────
 
 export function openDayModal(date, teacherId) {
@@ -385,29 +442,20 @@ export function openDayModal(date, teacherId) {
   if (!teacher) return;
 
   const dayLabel = dateToDayLabel(date);
-  const cv       = colorOfTeacher(teacher);
-
-  // Pega o segmento e todos os períodos deste professor neste dia
-  const mine = state.schedules.filter(
+  const mine     = state.schedules.filter(
     s => s.teacherId === teacherId && s.day === dayLabel
   ).sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
 
-  // Todos os slots do segmento neste dia (para mostrar hora de estudo)
   const seg = state.segments.find(s =>
     mine.some(m => m.timeSlot.startsWith(s.id))
   ) ?? state.segments[0];
 
-  const allPeriodos = seg ? ['manha','tarde'].flatMap(turno => {
-    const seen = new Set();
-    return getPeriodos(seg.id, turno)
-      .filter(p => !p.isIntervalo)
-      .filter(p => {
-        const k = `${turno}|${p.aulaIdx}`;
-        if (seen.has(k)) return false;
-        seen.add(k); return true;
-      })
-      .map(p => ({ ...p, turno, slot: `${seg.id}|${turno}|${p.aulaIdx}` }));
-  }).sort((a, b) => a.inicio.localeCompare(b.inicio)) : [];
+  const segTurno   = seg?.turno ?? 'manha';
+  const allPeriodos = seg
+    ? getPeriodos(seg.id, segTurno)
+        .filter(p => !p.isIntervalo)
+        .map(p => ({ ...p, turno: segTurno, slot: `${seg.id}|${segTurno}|${p.aulaIdx}` }))
+    : [];
 
   // Ausências já registradas
   const absenceMap = {};
@@ -419,63 +467,66 @@ export function openDayModal(date, teacherId) {
   });
 
   const rows = allPeriodos.map(p => {
-    const sched  = mine.find(s => s.timeSlot === p.slot);
-    const abs    = sched ? absenceMap[p.slot] : null;
-    const subT   = abs?.substituteId
-      ? state.teachers.find(t => t.id === abs.substituteId) : null;
-    const isAbs  = !!abs;
-    const subj   = state.subjects.find(x => x.id === sched?.subjectId);
+    const sched = mine.find(s => s.timeSlot === p.slot);
+    const abs   = sched ? absenceMap[p.slot] : null;
+    const subT  = abs?.substituteId ? state.teachers.find(t => t.id === abs.substituteId) : null;
+    const isAbs = !!abs;
+    const subj  = state.subjects.find(x => x.id === sched?.subjectId);
 
-    if (!sched) {
-      // Hora de estudo
-      return `
-        <div class="day-modal-row" style="opacity:.5">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="flex-shrink:0;text-align:center;min-width:60px">
-              <div style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--t3)">
-                ${h(p.label)}</div>
-              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t3)">
-                ${h(p.inicio)}–${h(p.fim)}</div>
-            </div>
-            <div style="font-size:13px;color:var(--t3);font-style:italic">Hora de estudo</div>
+    if (!sched) return `
+      <div class="day-modal-row" style="opacity:.45">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex-shrink:0;min-width:64px;text-align:center">
+            <div style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--t3)">${h(p.label)}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t3)">${h(p.inicio)}–${h(p.fim)}</div>
           </div>
-        </div>`;
-    }
+          <div style="font-size:13px;color:var(--t3);font-style:italic">Hora de estudo</div>
+        </div>
+      </div>`;
+
+    // Sugestões para esta aula (se já está ausente e sem sub)
+    const top3 = (isAbs && !subT && isAdminRole())
+      ? _top3(teacherId, date, p.slot, sched.subjectId)
+      : [];
 
     return `
       <div class="day-modal-row ${isAbs ? 'day-modal-absent' : ''}">
         <div style="display:flex;align-items:flex-start;gap:12px">
-          <!-- Horário -->
-          <div style="flex-shrink:0;text-align:center;min-width:60px">
-            <div style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--t2)">
-              ${h(p.label)}</div>
-            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t3)">
-              ${h(p.inicio)}–${h(p.fim)}</div>
+          <div style="flex-shrink:0;min-width:64px;text-align:center">
+            <div style="font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--t2)">${h(p.label)}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t3)">${h(p.inicio)}–${h(p.fim)}</div>
           </div>
-          <!-- Aula: turma em negrito, matéria abaixo -->
           <div style="flex:1">
             <div style="font-weight:700;font-size:15px;color:var(--t1)">${h(sched.turma)}</div>
             <div style="font-size:13px;color:var(--t2);margin-top:2px">${h(subj?.name ?? '—')}</div>
             ${isAbs ? `
-              <div style="margin-top:6px;padding:6px 10px;border-radius:6px;
-                background:${subT ? 'var(--ok-l)' : 'var(--err-l)'};
-                border:1px solid ${subT ? 'var(--ok-b)' : 'var(--err-b)'}">
-                ${subT
-                  ? `<div style="font-size:11px;font-weight:700;color:var(--ok)">✓ Substituto</div>
-                     <div style="font-size:13px;font-weight:700;color:#065F46">${h(subT.name)}</div>`
-                  : `<div style="font-size:12px;color:var(--err);font-weight:600">⚠ Sem substituto definido</div>`}
+              <div style="margin-top:8px">
+                ${subT ? `
+                  <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;
+                    border-radius:var(--r);background:var(--ok-l);border:1px solid var(--ok-b)">
+                    <span style="font-size:12px;color:var(--ok);font-weight:700">✓ Substituto</span>
+                    <span style="font-size:14px;font-weight:700;color:#065F46">${h(subT.name)}</span>
+                    ${isAdminRole() ? `
+                      <button class="btn btn-ghost btn-xs" style="margin-left:auto"
+                        data-day-action="pickSub"
+                        data-tid="${teacherId}" data-date="${date}"
+                        data-slot="${p.slot}" data-abs="${abs.absenceId}" data-slt="${abs.slotId}">
+                        ↺ Trocar
+                      </button>` : ''}
+                  </div>` : `
+                  <div style="font-size:12px;color:var(--err);font-weight:600;margin-bottom:6px">
+                    ⚠ Sem substituto
+                  </div>
+                  ${top3.length > 0 ? `
+                    <div style="display:flex;flex-direction:column;gap:4px">
+                      ${top3.map(c => _renderCandCard(c, abs.absenceId, abs.slotId, date, teacherId, true)).join('')}
+                    </div>` : `
+                    <div style="font-size:12px;color:var(--t3)">Nenhum professor disponível.</div>`}`}
               </div>` : ''}
           </div>
-          <!-- Ações (só admin) -->
           ${isAdminRole() ? `
-            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">
               ${isAbs ? `
-                <button class="btn btn-ghost btn-xs"
-                  data-day-action="pickSub"
-                  data-tid="${teacherId}" data-date="${date}"
-                  data-slot="${p.slot}" data-abs="${abs.absenceId}" data-slt="${abs.slotId}">
-                  ${subT ? '↺ Trocar' : '+ Substituto'}
-                </button>
                 <button class="btn btn-ghost btn-xs" style="color:var(--err)"
                   data-day-action="clearAbs"
                   data-abs="${abs.absenceId}" data-slt="${abs.slotId}">
@@ -498,7 +549,9 @@ export function openDayModal(date, teacherId) {
   const overlay = document.getElementById('overlay');
   if (!body || !overlay) return;
 
-  const allAbsent = mine.every(s => absenceMap[s.timeSlot]);
+  const allAbsent   = mine.length > 0 && mine.every(s => absenceMap[s.timeSlot]);
+  const anyAbsent   = mine.some(s => absenceMap[s.timeSlot]);
+  const allHasSub   = mine.every(s => absenceMap[s.timeSlot]?.substituteId);
 
   body.innerHTML = `
     <div class="m-hdr">
@@ -513,23 +566,38 @@ export function openDayModal(date, teacherId) {
       <button class="m-close"
         onclick="document.getElementById('overlay').classList.remove('on')">×</button>
     </div>
-    ${isAdminRole() && mine.length > 0 && !allAbsent ? `
-      <div style="margin-bottom:12px;padding:10px 12px;border-radius:var(--r);
-        background:var(--surf2);display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:13px;color:var(--t2)">Marcar todas as aulas como falta:</span>
-        <button class="btn btn-dark btn-sm" data-day-action="markDayAll"
-          data-tid="${teacherId}" data-date="${date}">
-          Marcar dia inteiro
-        </button>
+
+    ${isAdminRole() && mine.length > 0 ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;
+        background:var(--surf2);border-radius:var(--r)">
+        ${!allAbsent ? `
+          <button class="btn btn-dark btn-sm" data-day-action="markDayAll"
+            data-tid="${teacherId}" data-date="${date}">
+            Marcar dia inteiro
+          </button>` : ''}
+        ${anyAbsent && !allHasSub ? `
+          <button class="btn btn-ghost btn-sm" data-day-action="acceptAllSuggestions"
+            data-tid="${teacherId}" data-date="${date}">
+            ✓ Aceitar todas as sugestões
+          </button>` : ''}
+        ${allHasSub ? `
+          <button class="btn btn-dark btn-sm" data-day-action="downloadPDF"
+            data-tid="${teacherId}" data-date="${date}">
+            ⬇ Baixar PDF
+          </button>` : ''}
       </div>` : ''}
+
     <div style="display:flex;flex-direction:column;gap:0">
       ${rows || '<p style="color:var(--t3);text-align:center;padding:24px 0">Nenhuma aula neste dia.</p>'}
     </div>`;
 
   overlay.classList.add('on');
 
+  // Handlers
   body.querySelectorAll('[data-day-action="markAbsent"]').forEach(btn => {
-    btn.addEventListener('click', () => _markAbsent(btn, date, teacherId));
+    btn.addEventListener('click', () => {
+      _markAbsentAndSuggest(btn, date, teacherId);
+    });
   });
   body.querySelectorAll('[data-day-action="markDayAll"]').forEach(btn => {
     btn.addEventListener('click', () => _markDayAll(date, teacherId));
@@ -538,28 +606,46 @@ export function openDayModal(date, teacherId) {
     btn.addEventListener('click', () => _clearAbsent(btn.dataset.abs, btn.dataset.slt, date, teacherId));
   });
   body.querySelectorAll('[data-day-action="pickSub"]').forEach(btn => {
-    btn.addEventListener('click', () => _openSubPicker(btn, date, teacherId));
+    btn.addEventListener('click', () => _openSubPickerFull(btn, date, teacherId));
+  });
+  body.querySelectorAll('[data-pick-tid]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      assignSubstitute(btn.dataset.pickAbs, btn.dataset.pickSlt, btn.dataset.pickTid);
+      saveState(); updateNav();
+      openDayModal(btn.dataset.pickDate, btn.dataset.pickTeacher);
+      _refreshWeekGrid(btn.dataset.pickTeacher);
+    });
+  });
+  body.querySelectorAll('[data-day-action="acceptAllSuggestions"]').forEach(btn => {
+    btn.addEventListener('click', () => _acceptAllSuggestions(date, teacherId));
+  });
+  body.querySelectorAll('[data-day-action="downloadPDF"]').forEach(btn => {
+    btn.addEventListener('click', () => _downloadDayPDF(date, teacherId));
   });
 }
 
 // ─── Marcar falta ─────────────────────────────────────────────────────────────
 
-function _markAbsent(btn, date, teacherId) {
+function _markAbsentAndSuggest(btn, date, teacherId) {
   const { slot, schedId, subj, turma } = btn.dataset;
   const absenceId = createAbsence(teacherId, [{
     date, timeSlot: slot, scheduleId: schedId, subjectId: subj || null, turma,
   }]);
   saveState();
-  _openSubPickerForNew(absenceId, date, teacherId, slot);
+  updateNav();
+  // Reabre o modal do dia para mostrar sugestões inline
+  openDayModal(date, teacherId);
+  _refreshWeekGrid(teacherId);
+}
+
+function _markAbsent(btn, date, teacherId) {
+  _markAbsentAndSuggest(btn, date, teacherId);
 }
 
 function _markDayAll(date, teacherId) {
   const dayLabel = dateToDayLabel(date);
-  const mine = state.schedules.filter(
-    s => s.teacherId === teacherId && s.day === dayLabel
-  );
-  // Filtra os que ainda não têm falta registrada
-  const absenceSlots = new Set(
+  const mine = state.schedules.filter(s => s.teacherId === teacherId && s.day === dayLabel);
+  const alreadyAbsent = new Set(
     (state.absences ?? []).flatMap(ab =>
       ab.teacherId === teacherId
         ? ab.slots.filter(sl => sl.date === date).map(sl => sl.timeSlot)
@@ -567,15 +653,28 @@ function _markDayAll(date, teacherId) {
     )
   );
   const rawSlots = mine
-    .filter(s => !absenceSlots.has(s.timeSlot))
-    .map(s => ({
-      date, timeSlot: s.timeSlot, scheduleId: s.id,
-      subjectId: s.subjectId ?? null, turma: s.turma,
-    }));
+    .filter(s => !alreadyAbsent.has(s.timeSlot))
+    .map(s => ({ date, timeSlot: s.timeSlot, scheduleId: s.id, subjectId: s.subjectId ?? null, turma: s.turma }));
   if (!rawSlots.length) return;
-  const absenceId = createAbsence(teacherId, rawSlots);
-  saveState();
-  updateNav();
+  createAbsence(teacherId, rawSlots);
+  saveState(); updateNav();
+  openDayModal(date, teacherId);
+  _refreshWeekGrid(teacherId);
+}
+
+function _acceptAllSuggestions(date, teacherId) {
+  const dayLabel = dateToDayLabel(date);
+  const mine = state.schedules.filter(s => s.teacherId === teacherId && s.day === dayLabel);
+
+  (state.absences ?? []).forEach(ab => {
+    if (ab.teacherId !== teacherId) return;
+    ab.slots.filter(sl => sl.date === date && !sl.substituteId).forEach(sl => {
+      const top = rankCandidates(teacherId, date, sl.timeSlot, sl.subjectId)[0];
+      if (top) assignSubstitute(ab.id, sl.id, top.teacher.id);
+    });
+  });
+
+  saveState(); updateNav();
   openDayModal(date, teacherId);
   _refreshWeekGrid(teacherId);
 }
@@ -587,9 +686,7 @@ function _markRangeAbsent(teacherId, fromDate, toDate) {
   let total = 0;
   dates.forEach(date => {
     const dayLabel = dateToDayLabel(date);
-    const mine     = state.schedules.filter(
-      s => s.teacherId === teacherId && s.day === dayLabel
-    );
+    const mine     = state.schedules.filter(s => s.teacherId === teacherId && s.day === dayLabel);
     const alreadyAbsent = new Set(
       (state.absences ?? []).flatMap(ab =>
         ab.teacherId === teacherId
@@ -599,18 +696,11 @@ function _markRangeAbsent(teacherId, fromDate, toDate) {
     );
     const rawSlots = mine
       .filter(s => !alreadyAbsent.has(s.timeSlot))
-      .map(s => ({
-        date, timeSlot: s.timeSlot, scheduleId: s.id,
-        subjectId: s.subjectId ?? null, turma: s.turma,
-      }));
-    if (rawSlots.length) {
-      createAbsence(teacherId, rawSlots);
-      total += rawSlots.length;
-    }
+      .map(s => ({ date, timeSlot: s.timeSlot, scheduleId: s.id, subjectId: s.subjectId ?? null, turma: s.turma }));
+    if (rawSlots.length) { createAbsence(teacherId, rawSlots); total += rawSlots.length; }
   });
 
-  saveState();
-  updateNav();
+  saveState(); updateNav();
   alert(`✓ ${total} aula${total !== 1 ? 's' : ''} marcada${total !== 1 ? 's' : ''} como falta em ${dates.length} dia${dates.length !== 1 ? 's' : ''}.`);
   _refreshWeekGrid(teacherId);
 }
@@ -624,84 +714,111 @@ function _clearAbsent(absenceId, slotId, date, teacherId) {
   });
 }
 
-function _openSubPickerForNew(absenceId, date, teacherId, slot) {
-  const ab = state.absences?.find(a => a.id === absenceId);
-  if (!ab) return;
-  const sl = ab.slots[0];
-  _openSubPickerModal(absenceId, sl.id, date, teacherId, slot, sl.subjectId);
-}
+// ─── Selecionar substituto (lista completa) ───────────────────────────────────
 
-function _openSubPicker(btn, date, teacherId) {
+function _openSubPickerFull(btn, date, teacherId) {
   const { abs, slt, slot } = btn.dataset;
-  const ab = state.absences?.find(a => a.id === abs);
-  const sl = ab?.slots.find(s => s.id === slt);
-  _openSubPickerModal(abs, slt, date, teacherId, slot, sl?.subjectId);
-}
-
-function _openSubPickerModal(absenceId, slotId, date, teacherId, slot, subjectId) {
-  const candidates = rankCandidates(teacherId, date, slot, subjectId);
-  const ab  = state.absences?.find(a => a.id === absenceId);
-  const sl  = ab?.slots.find(s => s.id === slotId);
-  const curSub = sl?.substituteId
-    ? state.teachers.find(t => t.id === sl.substituteId) : null;
-
-  const sameArea  = candidates.filter(c => c.match !== 'other');
-  const otherArea = candidates.filter(c => c.match === 'other');
-
-  const renderCand = c => {
-    const tc    = colorOfTeacher(c.teacher);
-    const isCur = c.teacher.id === sl?.substituteId;
-    const icon  = c.match === 'subject' ? '⭐' : c.match === 'area' ? '🔵' : '⚪';
-    return `
-      <button class="cand ${isCur ? 'sel' : ''}" data-sub-tid="${c.teacher.id}">
-        <span class="cand-dot" style="background:${tc.dt}"></span>
-        <div style="flex:1">
-          <div class="cand-name">${h(c.teacher.name)}</div>
-          <div class="cand-area">${icon}
-            <span style="font-size:10px;margin-left:4px;color:var(--t3)">${c.load} aulas/sem.</span>
-          </div>
-        </div>
-        ${isCur ? '<span class="cand-cur">atual ✓</span>' : ''}
-        <span style="color:var(--t3);font-size:18px">›</span>
-      </button>`;
-  };
+  const ab      = state.absences?.find(a => a.id === abs);
+  const sl      = ab?.slots.find(s => s.id === slt);
+  const all     = rankCandidates(teacherId, date, slot, sl?.subjectId);
+  const curSub  = sl?.substituteId ? state.teachers.find(t => t.id === sl.substituteId) : null;
 
   const body = document.getElementById('modal-body');
   if (!body) return;
 
+  const candRows = all.map(c => _renderCandCard(c, abs, slt, date, teacherId, false)).join('');
+
   body.innerHTML = `
     <div class="m-hdr">
       <h3 style="font-size:17px">Selecionar Substituto</h3>
-      <button class="m-close" data-back-day="${date}" data-back-tid="${teacherId}"
-        id="btn-back-day">←</button>
+      <button class="m-close" id="btn-back-sub">←</button>
     </div>
-    ${curSub ? `<div class="sub-box" style="margin-bottom:16px">
-      <div class="sub-box-l">✓ Atual</div>
-      <div class="sub-box-n">${h(curSub.name)}</div>
-    </div>` : ''}
-    ${sameArea.length > 0 ? `<div class="sec-lbl">⭐ Mesma área</div>${sameArea.map(renderCand).join('')}` : ''}
-    ${sameArea.length > 0 && otherArea.length > 0 ? '<div class="divider"></div>' : ''}
-    ${otherArea.length > 0 ? `<div class="sec-lbl">Outras áreas</div>${otherArea.map(renderCand).join('')}` : ''}
-    ${candidates.length === 0 ? `<div style="text-align:center;padding:24px 0;color:var(--t3)">
-      <div style="font-size:36px;margin-bottom:8px">😕</div>
-      <p>Nenhum professor disponível neste horário.</p>
-    </div>` : ''}
-    <button class="btn btn-ghost" style="width:100%;margin-top:12px"
-      data-back-day="${date}" data-back-tid="${teacherId}">Cancelar</button>`;
+    ${curSub ? `
+      <div class="sub-box" style="margin-bottom:12px">
+        <div class="sub-box-l">✓ Atual</div>
+        <div class="sub-box-n">${h(curSub.name)}</div>
+      </div>` : ''}
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px">
+      Ordenados por menor carga semanal · ${all.length} disponível${all.length !== 1 ? 'is' : ''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto">
+      ${candRows || '<p style="color:var(--t3);text-align:center;padding:20px 0">Nenhum professor disponível neste horário.</p>'}
+    </div>
+    <button class="btn btn-ghost" style="width:100%;margin-top:12px" id="btn-cancel-sub">
+      Cancelar
+    </button>`;
 
-  body.querySelectorAll('[data-sub-tid]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      assignSubstitute(absenceId, slotId, btn.dataset.subTid);
-      saveState();
-      updateNav();
-      openDayModal(date, teacherId);
-      _refreshWeekGrid(teacherId);
+  body.querySelectorAll('[data-pick-tid]').forEach(b => {
+    b.addEventListener('click', () => {
+      assignSubstitute(b.dataset.pickAbs, b.dataset.pickSlt, b.dataset.pickTid);
+      saveState(); updateNav();
+      openDayModal(b.dataset.pickDate, b.dataset.pickTeacher);
+      _refreshWeekGrid(b.dataset.pickTeacher);
     });
   });
 
-  body.querySelectorAll('[data-back-day]').forEach(btn => {
-    btn.addEventListener('click', () => openDayModal(btn.dataset.backDay, btn.dataset.backTid));
+  document.getElementById('btn-back-sub')?.addEventListener('click', () => openDayModal(date, teacherId));
+  document.getElementById('btn-cancel-sub')?.addEventListener('click', () => openDayModal(date, teacherId));
+}
+
+// ─── PDF ──────────────────────────────────────────────────────────────────────
+
+function _downloadDayPDF(date, teacherId) {
+  const teacher  = state.teachers.find(t => t.id === teacherId);
+  const dayLabel = dateToDayLabel(date);
+  const mine     = state.schedules.filter(s => s.teacherId === teacherId && s.day === dayLabel)
+                     .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
+
+  const absenceMap = {};
+  (state.absences ?? []).forEach(ab => {
+    if (ab.teacherId !== teacherId) return;
+    ab.slots.filter(sl => sl.date === date).forEach(sl => {
+      absenceMap[sl.timeSlot] = sl;
+    });
   });
+
+  const rows = mine.map(s => {
+    const abs  = absenceMap[s.timeSlot];
+    const subj = state.subjects.find(x => x.id === s.subjectId);
+    const subT = abs?.substituteId ? state.teachers.find(t => t.id === abs.substituteId) : null;
+    const parts = s.timeSlot.split('|');
+    const aula  = getAulas(parts[0], parts[1]).find(p => p.aulaIdx === Number(parts[2]));
+    return `<tr>
+      <td>${h(aula?.label ?? s.timeSlot)}</td>
+      <td>${h(aula ? `${aula.inicio}–${aula.fim}` : '—')}</td>
+      <td>${h(subj?.name ?? '—')}</td>
+      <td>${h(s.turma)}</td>
+      <td style="font-weight:700;color:${subT ? '#065F46' : '#C8290A'}">${h(subT?.name ?? '—')}</td>
+    </tr>`;
+  }).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+    <title>Substituição — ${teacher?.name} — ${formatBR(date)}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Segoe UI',sans-serif;font-size:13px;color:#1a1814;padding:32px}
+      h1{font-size:20px;font-weight:800;margin-bottom:4px}
+      .sub{font-size:12px;color:#6b6760;margin-bottom:24px}
+      table{width:100%;border-collapse:collapse}
+      th{background:#1a1814;color:#fff;padding:10px 14px;text-align:left;font-size:11px;
+         text-transform:uppercase;letter-spacing:.05em}
+      td{padding:10px 14px;border-bottom:1px solid #e0ddd6;font-size:13px}
+      tr:nth-child(even) td{background:#f4f2ee}
+      @media print{body{padding:0}}
+    </style></head><body>
+    <h1>${h(teacher?.name ?? '—')}</h1>
+    <div class="sub">
+      Relatório de substituição · ${dayLabel}, ${formatBR(date)} ·
+      Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}
+    </div>
+    <table>
+      <thead><tr><th>Aula</th><th>Horário</th><th>Matéria</th><th>Turma</th><th>Substituto</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
 }
 
 // ─── DOM helpers ──────────────────────────────────────────────────────────────
