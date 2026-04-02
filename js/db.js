@@ -161,7 +161,6 @@ const HARDCODED_ADMINS = [
 /** Verifica se um e-mail é administrador */
 export async function isAdmin(email) {
   if (!email) return false;
-  // Verifica admin fixo primeiro (sem precisar consultar o Firestore)
   if (HARDCODED_ADMINS.includes(email.toLowerCase())) return true;
   try {
     const snap = await getDoc(doc(db, 'admins', _emailKey(email)));
@@ -188,6 +187,109 @@ export async function listAdmins() {
 /** Remove um administrador */
 export async function removeAdmin(email) {
   await deleteDoc(doc(db, 'admins', _emailKey(email)));
+}
+
+// ─── Professores (por e-mail) ─────────────────────────────────────────────────
+
+/**
+ * Retorna o professor aprovado com aquele e-mail, ou null.
+ * Busca tanto no state (já carregado) quanto no Firestore.
+ */
+export async function getTeacherByEmail(email) {
+  if (!email) return null;
+  // Busca no state primeiro (evita round-trip)
+  const { state } = await import('./state.js');
+  const local = state.teachers.find(
+    t => t.email?.toLowerCase() === email.toLowerCase()
+  );
+  if (local) return local;
+  // Fallback: consulta Firestore
+  try {
+    const { getDocs: _getDocs, query: _q, where: _w } =
+      await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const snap = await _getDocs(
+      _q(collection(db, 'teachers'), _w('email', '==', email.toLowerCase()))
+    );
+    return snap.empty ? null : snap.docs[0].data();
+  } catch (e) {
+    return null;
+  }
+}
+
+// ─── Professores pendentes ────────────────────────────────────────────────────
+
+/**
+ * Registra um professor pendente de aprovação.
+ * Se já existe entrada para esse e-mail, não duplica.
+ */
+export async function requestTeacherAccess(user) {
+  const key = _emailKey(user.email);
+  const ref  = doc(db, 'pending_teachers', key);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return; // já registrado
+  await setDoc(ref, {
+    id:          key,
+    email:       user.email.toLowerCase(),
+    name:        user.displayName ?? '',
+    photoURL:    user.photoURL    ?? '',
+    requestedAt: serverTimestamp(),
+    status:      'pending',
+  });
+}
+
+/** Lista todos os professores pendentes */
+export async function listPendingTeachers() {
+  const snap = await getDocs(collection(db, 'pending_teachers'));
+  return snap.docs.map(d => d.data()).filter(d => d.status === 'pending');
+}
+
+/**
+ * Aprova um professor pendente:
+ *  1. Remove de /pending_teachers
+ *  2. Cria/atualiza entrada em /teachers (no state e no Firestore)
+ */
+export async function approveTeacher(pendingId) {
+  const ref  = doc(db, 'pending_teachers', pendingId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+
+  const data = snap.data();
+  const { state } = await import('./state.js');
+  const { uid }   = await import('./helpers.js');
+
+  // Verifica se já existe no state pelo e-mail
+  let teacher = state.teachers.find(
+    t => t.email?.toLowerCase() === data.email
+  );
+
+  if (!teacher) {
+    // Cria novo professor aprovado
+    teacher = {
+      id:          uid(),
+      name:        data.name,
+      email:       data.email,
+      whatsapp:    '',
+      celular:     '',
+      subjectIds:  [],
+      status:      'approved',
+    };
+    state.teachers.push(teacher);
+  } else {
+    teacher.status = 'approved';
+    teacher.name   = teacher.name || data.name;
+  }
+
+  // Persiste no Firestore
+  await setDoc(doc(db, 'teachers', teacher.id), teacher);
+  await deleteDoc(ref);
+
+  const { saveState } = await import('./state.js');
+  saveState();
+}
+
+/** Rejeita e remove um professor pendente */
+export async function rejectTeacher(pendingId) {
+  await deleteDoc(doc(db, 'pending_teachers', pendingId));
 }
 
 // ─── Fallback localStorage ─────────────────────────────────────────────────────
