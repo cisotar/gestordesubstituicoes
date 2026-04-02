@@ -186,12 +186,43 @@ export function openEditTeacher(id) {
       <h3 style="font-size:17px">Editar Professor</h3>
       <button class="m-close" data-action="closeModal">×</button>
     </div>
-    <div class="fld" style="margin-bottom:20px">
-      <label class="lbl">Nome</label>
-      <input class="inp" id="edit-t-name" value="${h(teacher.name)}" placeholder="Nome completo">
+
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
+      <div class="fld">
+        <label class="lbl">Nome</label>
+        <input class="inp" id="edit-t-name" value="${h(teacher.name)}" placeholder="Nome completo">
+      </div>
+
+      <div class="divider"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">
+        Contato
+      </div>
+
+      <div class="fld">
+        <label class="lbl">E-mail</label>
+        <input class="inp" id="edit-t-email" type="email"
+          value="${h(teacher.email ?? '')}"
+          placeholder="professor@escola.edu.br">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fld">
+          <label class="lbl">WhatsApp</label>
+          <input class="inp" id="edit-t-whatsapp" type="tel"
+            value="${h(teacher.whatsapp ?? '')}"
+            placeholder="(11) 99999-9999">
+        </div>
+        <div class="fld">
+          <label class="lbl">Celular</label>
+          <input class="inp" id="edit-t-celular" type="tel"
+            value="${h(teacher.celular ?? '')}"
+            placeholder="(11) 99999-9999">
+        </div>
+      </div>
     </div>
+
     <div style="display:flex;gap:8px">
-      <button class="btn btn-dark" style="flex:1" data-action="saveEditTeacher" data-id="${id}">Salvar</button>
+      <button class="btn btn-dark" style="flex:1"
+        data-action="saveEditTeacher" data-id="${id}">Salvar</button>
       <button class="btn btn-ghost" data-action="closeModal">Cancelar</button>
     </div>`);
 
@@ -199,12 +230,22 @@ export function openEditTeacher(id) {
 }
 
 export function saveEditTeacher(id) {
-  const name = document.getElementById('edit-t-name')?.value?.trim();
+  const name     = document.getElementById('edit-t-name')?.value?.trim();
+  const email    = document.getElementById('edit-t-email')?.value?.trim()    ?? '';
+  const whatsapp = document.getElementById('edit-t-whatsapp')?.value?.trim() ?? '';
+  const celular  = document.getElementById('edit-t-celular')?.value?.trim()  ?? '';
+
   if (!name) { document.getElementById('edit-t-name')?.focus(); return; }
 
   const teacher = state.teachers.find(t => t.id === id);
-  if (teacher) teacher.name = name;
+  if (teacher) {
+    teacher.name     = name;
+    teacher.email    = email;
+    teacher.whatsapp = whatsapp;
+    teacher.celular  = celular;
+  }
 
+  // Atualiza snapshots no histórico
   state.history.forEach(e => {
     if (e.teacherId === id) e.teacherName = name;
     if (e.subId     === id) e.subName     = name;

@@ -39,7 +39,7 @@ export const state = {
   subjects: [], // { id, name, areaId }
 
   /* ── Corpo docente ─────────────────────────────────────────────────── */
-  teachers: [], // { id, name, subjectIds:[] }
+  teachers: [], // { id, name, subjectIds:[], email:'', whatsapp:'', celular:'' }
 
   /* ── Agenda ─────────────────────────────────────────────────────────── */
   // timeSlot = "segId|turno|aulaIdx"  ex: "seg-fund|manha|3"

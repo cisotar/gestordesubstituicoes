@@ -3,27 +3,32 @@
  *
  * Ordem de inicialização:
  *   1. Mostra tela de loading
- *   2. Carrega dados do Firestore → state
- *   3. Inicia autenticação (Firebase Auth)
- *   4. Registra eventos
- *   5. Renderiza a primeira página
+ *   2. Se localhost → verifica dev mode (pula Firebase Auth se ativo)
+ *   3. Se produção  → carrega Firestore + Firebase Auth
+ *   4. Registra eventos, renderiza, monta painel dev (se local)
  */
 
-import { loadFromFirestore }  from './db.js';
-import { initAuth }           from './auth.js';
-import { registerEvents }     from './events.js';
-import { updateNav }          from './nav.js';
-import { renderCalendar }     from './render.js';
+import { loadFromFirestore }         from './db.js';
+import { initAuth }                  from './auth.js';
+import { registerEvents }            from './events.js';
+import { updateNav }                 from './nav.js';
+import { renderCalendar }            from './render.js';
+import { IS_LOCAL, dev, applyDevAuth, mountDevPanel } from './devmode.js';
 
-// Mostra loading imediatamente
 setLoadingVisible(true);
 
 try {
-  // Carrega dados e autentica em paralelo
-  await Promise.all([
-    loadFromFirestore(),
-    initAuth(),
-  ]);
+  if (IS_LOCAL && dev.active) {
+    // ── Dev mode: pula Auth, carrega Firestore normalmente ──────────────────
+    applyDevAuth();
+    await loadFromFirestore();
+  } else if (IS_LOCAL) {
+    // ── Local sem dev mode: carrega tudo normalmente ─────────────────────────
+    await Promise.all([loadFromFirestore(), initAuth()]);
+  } else {
+    // ── Produção: comportamento normal ───────────────────────────────────────
+    await Promise.all([loadFromFirestore(), initAuth()]);
+  }
 } catch (e) {
   console.error('Falha na inicialização:', e);
 }
@@ -33,9 +38,14 @@ updateNav();
 renderCalendar();
 setLoadingVisible(false);
 
+// Painel dev só aparece em localhost
+if (IS_LOCAL) mountDevPanel();
+
 function setLoadingVisible(visible) {
-  const el = document.getElementById('app-loading');
-  if (el) el.style.display = visible ? 'flex' : 'none';
+  const el   = document.getElementById('app-loading');
   const wrap = document.querySelector('.wrap');
+  const nav  = document.getElementById('main-nav');
+  if (el)   el.style.display   = visible ? 'flex' : 'none';
   if (wrap) wrap.style.display = visible ? 'none' : '';
+  if (nav)  nav.style.display  = visible ? 'none' : '';
 }

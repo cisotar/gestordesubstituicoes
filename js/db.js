@@ -153,9 +153,16 @@ export async function saveConfig() {
 
 // ─── Admins ───────────────────────────────────────────────────────────────────
 
+/** E-mails com permissão de admin permanente (sem precisar estar no Firestore) */
+const HARDCODED_ADMINS = [
+  'contato.tarciso@gmail.com',
+];
+
 /** Verifica se um e-mail é administrador */
 export async function isAdmin(email) {
   if (!email) return false;
+  // Verifica admin fixo primeiro (sem precisar consultar o Firestore)
+  if (HARDCODED_ADMINS.includes(email.toLowerCase())) return true;
   try {
     const snap = await getDoc(doc(db, 'admins', _emailKey(email)));
     return snap.exists();

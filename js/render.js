@@ -512,12 +512,19 @@ function tabTeachers() {
         const cv   = colorOfTeacher(t);
         const ct   = state.schedules.filter(s => s.teacherId === t.id).length;
         const subs = teacherSubjectNames(t);
+        const hasContact = t.email || t.whatsapp || t.celular;
         return `
           <div class="ti" style="flex-wrap:wrap;gap:8px">
             <span class="ti-dot" style="background:${cv.dt}"></span>
             <div style="flex:1;min-width:140px">
               <div class="ti-name">${h(t.name)}</div>
               ${subs ? `<div style="font-size:11px;color:var(--t3);margin-top:2px">${h(subs)}</div>` : ''}
+              ${hasContact ? `
+                <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+                  ${t.email    ? `<span class="contact-chip">✉ ${h(t.email)}</span>`    : ''}
+                  ${t.whatsapp ? `<span class="contact-chip">💬 ${h(t.whatsapp)}</span>` : ''}
+                  ${t.celular  ? `<span class="contact-chip">📱 ${h(t.celular)}</span>`  : ''}
+                </div>` : ''}
             </div>
             <span class="ti-cnt">${ct} aula${ct !== 1 ? 's' : ''}</span>
             <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚 Matérias</button>

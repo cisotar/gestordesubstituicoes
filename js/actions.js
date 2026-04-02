@@ -150,7 +150,7 @@ export function addTeachersBulk(rawText) {
   let added = 0;
   names.forEach(name => {
     if (state.teachers.find(t => t.name.toLowerCase() === name.toLowerCase())) return;
-    state.teachers.push({ id: uid(), name, subjectIds: [] });
+    state.teachers.push({ id: uid(), name, subjectIds: [], email: '', whatsapp: '', celular: '' });
     added++;
   });
   saveState(); updateNav(); renderSettings();
@@ -164,7 +164,7 @@ export function addTeacher() {
   if (state.teachers.find(t => t.name.toLowerCase() === name.toLowerCase())) {
     alert('Professor já cadastrado.'); return;
   }
-  state.teachers.push({ id: uid(), name, subjectIds: [] });
+  state.teachers.push({ id: uid(), name, subjectIds: [], email: '', whatsapp: '', celular: '' });
   saveState(); updateNav(); renderSettings();
   setTimeout(() => el?.focus(), 30);
 }
@@ -184,6 +184,16 @@ export function saveTeacherSubjects(teacherId, subjectIds) {
   const teacher = state.teachers.find(t => t.id === teacherId);
   if (!teacher) return;
   teacher.subjectIds = subjectIds;
+  saveState(); renderSettings();
+}
+
+/** Salva os dados de contato de um professor */
+export function saveTeacherContacts(teacherId, { email, whatsapp, celular }) {
+  const teacher = state.teachers.find(t => t.id === teacherId);
+  if (!teacher) return;
+  teacher.email    = email    ?? teacher.email    ?? '';
+  teacher.whatsapp = whatsapp ?? teacher.whatsapp ?? '';
+  teacher.celular  = celular  ?? teacher.celular  ?? '';
   saveState(); renderSettings();
 }
 

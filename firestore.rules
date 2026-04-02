@@ -2,19 +2,34 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Leitura pública para todos
+    // ── Leitura pública ─────────────────────────────────────────────────────
     match /meta/{doc}      { allow read: if true; allow write: if isAdmin(); }
     match /teachers/{doc}  { allow read: if true; allow write: if isAdmin(); }
     match /schedules/{doc} { allow read: if true; allow write: if isAdmin(); }
     match /absences/{doc}  { allow read: if true; allow write: if isAdmin(); }
     match /history/{doc}   { allow read: if true; allow write: if isAdmin(); }
 
-    // Admins só admins leem e escrevem
+    // ── Somente admins ───────────────────────────────────────────────────────
     match /admins/{doc}    { allow read, write: if isAdmin(); }
 
+    // ── Função auxiliar ──────────────────────────────────────────────────────
+    // ── Função de verificação ────────────────────────────────────────────────
     function isAdmin() {
-      return request.auth != null &&
-        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower().replace('.','_').replace('#','_').replace('$','_').replace('/','_').replace('[','_').replace(']','_')));
+      return request.auth != null && (
+        // Admin fixo — primeiro acesso, antes de cadastrar no Firestore
+        request.auth.token.email == 'contato.tarciso@gmail.com' ||
+        // Demais admins cadastrados na coleção /admins
+        exists(/databases/$(database)/documents/admins/$(
+          request.auth.token.email
+            .lower()
+            .replace('.', '_')
+            .replace('#', '_')
+            .replace('$', '_')
+            .replace('/', '_')
+            .replace('[', '_')
+            .replace(']', '_')
+        ))
+      );
     }
   }
 }
