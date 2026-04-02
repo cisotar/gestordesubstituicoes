@@ -1353,3 +1353,74 @@ code {
 }
 .cand-compact:hover { border-color: var(--navy); background: var(--surf2); }
 .cand-compact.sel   { border-color: var(--ok-b); background: var(--ok-l); }
+
+/* ═══ DISCIPLINAS TAB ════════════════════════════════════════════════════════ */
+.disc-block {
+  border-radius: var(--rl);
+  border: 1.5px solid var(--bdr);
+  background: var(--surf);
+  overflow: hidden;
+  transition: box-shadow .15s;
+}
+.disc-block:hover { box-shadow: var(--sh); }
+
+.disc-block-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--bdr);
+  background: var(--surf2);
+}
+
+.disc-area-name {
+  font-weight: 700;
+  font-size: 15px;
+  border: none;
+  background: none;
+  color: var(--t1);
+  outline: none;
+  width: 100%;
+  font-family: 'Figtree', sans-serif;
+  cursor: text;
+}
+.disc-area-name:focus {
+  background: var(--surf);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: 2px solid var(--navy);
+}
+
+.disc-block-body {
+  padding: 14px 16px;
+}
+
+.disc-textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* ═══ TOAST ══════════════════════════════════════════════════════════════════ */
+#app-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Figtree', sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  z-index: 9999;
+  white-space: nowrap;
+}
+.toast-ok   { background: #065F46; color: #fff; }
+.toast-warn { background: #92400E; color: #fff; }
+.toast-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

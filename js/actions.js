@@ -238,3 +238,124 @@ export function removeSchedule(id) {
   state.schedules = state.schedules.filter(s => s.id !== id);
   saveState(); updateNav(); renderSettings();
 }
+
+// ─── Disciplinas (áreas + matérias unificadas) ────────────────────────────────
+
+/**
+ * Adiciona uma nova área vazia.
+ * Chamado pelo botão na aba Disciplinas.
+ */
+export function addAreaDisc(name) {
+  if (!name?.trim()) return;
+  if (state.areas.find(a => a.name.toLowerCase() === name.trim().toLowerCase())) {
+    showToast('Área já existe.', 'warn'); return;
+  }
+  const colorIdx = state.areas.length % 9;
+  state.areas.push({ id: uid(), name: name.trim(), colorIdx });
+  saveState();
+  // Re-renderiza só o bloco da lista, não a aba inteira
+  import('./render.js').then(({ renderSettings }) => renderSettings());
+  showToast('Área criada.');
+}
+
+/**
+ * Salva o nome e as matérias de uma área a partir do bloco da UI.
+ * Lê o input de nome e o textarea de matérias diretamente do DOM.
+ */
+export function saveAreaBlock(areaId) {
+  const area = state.areas.find(a => a.id === areaId);
+  if (!area) return;
+
+  const nameEl = document.getElementById(`disc-name-${areaId}`);
+  const txtEl  = document.getElementById(`disc-txt-${areaId}`);
+  if (!nameEl || !txtEl) return;
+
+  const newName = nameEl.value.trim();
+  if (!newName) { nameEl.focus(); showToast('O nome da área não pode ser vazio.', 'warn'); return; }
+
+  // Atualiza nome
+  area.name = newName;
+
+  // Processa as matérias do textarea (uma por linha, ignora vazias e duplicatas)
+  const lines = txtEl.value.split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .filter((v, i, arr) => arr.indexOf(v) === i);
+
+  // Remove matérias antigas desta área que não estão mais na lista
+  const toRemove = state.subjects.filter(
+    s => s.areaId === areaId && !lines.includes(s.name)
+  );
+  toRemove.forEach(s => {
+    state.subjects = state.subjects.filter(x => x.id !== s.id);
+    // Remove dos professores também
+    state.teachers.forEach(t => {
+      t.subjectIds = (t.subjectIds ?? []).filter(id => id !== s.id);
+    });
+  });
+
+  // Adiciona matérias novas
+  lines.forEach(name => {
+    if (!state.subjects.find(s => s.areaId === areaId && s.name === name)) {
+      state.subjects.push({ id: uid(), name, areaId });
+    }
+  });
+
+  saveState();
+
+  // Atualiza o contador no header do bloco sem re-renderizar tudo
+  const block = document.getElementById(`disc-block-${areaId}`);
+  if (block) {
+    const ct = state.subjects.filter(s => s.areaId === areaId).length;
+    const span = block.querySelector('.ti-dot + input + div span, .disc-block-hdr span');
+    // Atualiza o span de contagem
+    const spans = block.querySelectorAll('span');
+    spans.forEach(sp => {
+      if (sp.textContent.match(/\d+ disciplina/)) {
+        sp.textContent = `${ct} disciplina${ct !== 1 ? 's' : ''}`;
+      }
+    });
+  }
+
+  showToast('Alterações salvas com sucesso!');
+}
+
+/**
+ * Remove uma área e todas as suas matérias.
+ */
+export function removeAreaDisc(areaId) {
+  const area = state.areas.find(a => a.id === areaId);
+  if (!area) return;
+  if (!confirm(`Remover a área "${area.name}" e todas as suas disciplinas?`)) return;
+
+  // Remove matérias
+  const subIds = state.subjects.filter(s => s.areaId === areaId).map(s => s.id);
+  state.subjects = state.subjects.filter(s => s.areaId !== areaId);
+  state.teachers.forEach(t => {
+    t.subjectIds = (t.subjectIds ?? []).filter(id => !subIds.includes(id));
+  });
+
+  state.areas = state.areas.filter(a => a.id !== areaId);
+  saveState();
+
+  // Remove o bloco do DOM sem re-renderizar tudo
+  document.getElementById(`disc-block-${areaId}`)?.remove();
+  showToast('Área removida.');
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+let _toastTimer = null;
+
+export function showToast(msg, type = 'ok') {
+  let el = document.getElementById('app-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'app-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = type === 'warn' ? `⚠ ${msg}` : `✓ ${msg}`;
+  el.className   = `toast-${type} toast-show`;
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = el.className.replace('toast-show',''); }, 3000);
+}

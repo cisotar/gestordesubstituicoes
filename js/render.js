@@ -232,8 +232,7 @@ export function renderSettings() {
   switch (state.stab) {
     case 'segments':  el.innerHTML = tabSegments();  break;
     case 'periods':   el.innerHTML = tabPeriods();   break;
-    case 'areas':     el.innerHTML = tabAreas();     break;
-    case 'subjects':  el.innerHTML = tabSubjects();  break;
+    case 'disciplines': el.innerHTML = tabDisciplines(); break;
     case 'teachers':  el.innerHTML = tabTeachers();  break;
     case 'schedules': el.innerHTML = tabSchedules(); break;
   }
@@ -413,92 +412,63 @@ function tabPeriods() {
 }
 
 
-function tabAreas() {
-  const list = state.areas.map(area => {
-    const cv  = COLOR_PALETTE[area.colorIdx % COLOR_PALETTE.length];
-    const ct  = state.subjects.filter(s => s.areaId === area.id).length;
-    return `
-      <div class="ti">
-        <span class="ti-dot" style="background:${cv.dt}"></span>
-        <span class="ti-name">${h(area.name)}</span>
-        <span class="ti-area" style="background:${cv.tg};color:${cv.tx}">${ct} matéria${ct !== 1 ? 's' : ''}</span>
-        <button class="btn-del" data-action="removeArea" data-id="${area.id}">✕</button>
-      </div>`;
-  }).join('') || '<p style="color:var(--t3);font-size:13px;padding:12px 0">Nenhuma área cadastrada.</p>';
+// ── Tab: Disciplinas (Áreas + Matérias unificadas) ────────────────────────────
 
-  return `
-    <div style="max-width:580px">
-      <div class="card card-b" style="margin-bottom:16px">
-        <h3 style="margin-bottom:6px">Cadastrar Áreas em Bloco</h3>
-        <p style="font-size:13px;color:var(--t2);margin-bottom:12px">Uma área por linha.</p>
-        <textarea class="inp" id="areas-bulk" rows="5"
-          placeholder="Linguagens e Códigos&#10;Matemática&#10;Ciências da Natureza"
-          style="resize:vertical;font-family:'DM Mono',monospace;font-size:13px"></textarea>
-        <div style="margin-top:10px;display:flex;justify-content:flex-end">
-          <button class="btn btn-dark" data-action="addAreasBulk">Adicionar todas</button>
-        </div>
-      </div>
-      <div class="card card-b">
-        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">
-          ${state.areas.length} área${state.areas.length !== 1 ? 's' : ''}
-        </div>
-        <div style="max-height:380px;overflow-y:auto">${list}</div>
-      </div>
-    </div>`;
-}
-
-// ── Tab: Matérias ─────────────────────────────────────────────────────────────
-
-function tabSubjects() {
-  if (state.areas.length === 0) {
-    return `<div class="card card-b" style="text-align:center;padding:40px;max-width:480px">
-      <p style="color:var(--t2);margin-bottom:16px">Cadastre áreas antes de adicionar matérias.</p>
-      <button class="btn btn-dark" data-action="stab" data-tab="areas">Cadastrar Áreas</button>
-    </div>`;
-  }
-
-  const areaOpts = state.areas.map(a =>
-    `<option value="${a.id}">${h(a.name)}</option>`).join('');
-
-  const grouped = state.areas.map(area => {
-    const subs = state.subjects.filter(s => s.areaId === area.id);
+function tabDisciplines() {
+  const blocks = state.areas.map(area => {
     const cv   = COLOR_PALETTE[area.colorIdx % COLOR_PALETTE.length];
-    if (!subs.length) return '';
+    const subs = state.subjects.filter(s => s.areaId === area.id);
+    const txt  = subs.map(s => s.name).join('\n');
     return `
-      <tr>
-        <td colspan="2" style="padding:8px 12px;background:${cv.tg}">
-          <span style="font-size:11px;font-weight:700;color:${cv.tx};text-transform:uppercase;letter-spacing:.05em">${h(area.name)}</span>
-        </td>
-      </tr>
-      ${subs.map(s => `
-        <tr>
-          <td style="padding:9px 12px 9px 20px;font-size:13.5px">${h(s.name)}</td>
-          <td style="padding:9px 12px;text-align:right">
-            <button class="btn-del" data-action="removeSubject" data-id="${s.id}">✕</button>
-          </td>
-        </tr>`).join('')}`;
+      <div class="disc-block" id="disc-block-${area.id}"
+        style="border-left:4px solid ${cv.dt}">
+        <div class="disc-block-hdr">
+          <div style="display:flex;align-items:center;gap:10px;flex:1">
+            <span class="ti-dot" style="background:${cv.dt};flex-shrink:0"></span>
+            <input class="disc-area-name" id="disc-name-${area.id}"
+              value="${h(area.name)}"
+              style="font-weight:700;font-size:15px;border:none;background:none;
+                     color:var(--t1);outline:none;width:100%;font-family:'Figtree',sans-serif"
+              data-disc-action="renameArea" data-id="${area.id}">
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <span style="font-size:12px;color:var(--t3)">${subs.length} disciplina${subs.length !== 1 ? 's' : ''}</span>
+            <button class="btn btn-dark btn-xs"
+              data-disc-action="saveArea" data-id="${area.id}">
+              Salvar
+            </button>
+            <button class="btn-del"
+              data-disc-action="removeArea" data-id="${area.id}">✕</button>
+          </div>
+        </div>
+        <div class="disc-block-body">
+          <label class="lbl" style="margin-bottom:6px;display:block">
+            Disciplinas — uma por linha
+          </label>
+          <textarea class="inp disc-textarea" id="disc-txt-${area.id}"
+            rows="4" placeholder="Ex:\nGeografia\nHistória\nSociologia"
+            style="font-family:'DM Mono',monospace;font-size:13px;resize:vertical"
+            >${h(txt)}</textarea>
+        </div>
+      </div>`;
   }).join('');
 
   return `
-    <div style="max-width:580px">
-      <div class="card card-b">
-        <h3 style="margin-bottom:6px">Cadastrar Matérias em Bloco</h3>
-        <p style="font-size:13px;color:var(--t2);margin-bottom:12px">Selecione a área e liste as matérias, uma por linha.</p>
-        <div class="fld" style="margin-bottom:12px">
-          <label class="lbl">Área</label>
-          <select class="inp" id="subj-area">${areaOpts}</select>
-        </div>
-        <textarea class="inp" id="subjs-bulk" rows="5"
-          placeholder="Língua Portuguesa&#10;Literatura&#10;Redação"
-          style="resize:vertical;font-family:'DM Mono',monospace;font-size:13px"></textarea>
-        <div style="margin-top:10px;display:flex;justify-content:flex-end">
-          <button class="btn btn-dark" data-action="addSubjectsBulk">Adicionar todas</button>
+    <div style="max-width:640px">
+      <!-- Nova área -->
+      <div class="card card-b" style="margin-bottom:20px">
+        <h3 style="margin-bottom:10px;font-size:14px">Nova área do conhecimento</h3>
+        <div style="display:flex;gap:8px">
+          <input class="inp" id="new-area-name" placeholder="Ex: Ciências Humanas" style="flex:1"
+            data-enter="addAreaDisc">
+          <button class="btn btn-dark" data-disc-action="addArea">Adicionar</button>
         </div>
       </div>
-      ${state.subjects.length > 0 ? `
-        <div class="card" style="margin-top:16px;overflow:hidden">
-          <table class="dtbl"><tbody>${grouped}</tbody></table>
-        </div>` : ''}
+
+      <!-- Blocos de áreas -->
+      <div id="disc-list" style="display:flex;flex-direction:column;gap:14px">
+        ${blocks || '<div class="empty"><div class="empty-ico">📚</div><div class="empty-ttl">Nenhuma área cadastrada</div><div class="empty-dsc">Adicione uma área acima para começar.</div></div>'}
+      </div>
     </div>`;
 }
 

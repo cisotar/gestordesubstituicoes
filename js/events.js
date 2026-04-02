@@ -217,6 +217,15 @@ export function registerEvents() {
       }
     }
 
+    // Disciplines tab actions
+    const discEl = e.target.closest('[data-disc-action]');
+    if (discEl) {
+      const a = discEl.dataset.discAction;
+      if (a === 'addArea')    { addAreaDisc(document.getElementById('new-area-name')?.value?.trim()); document.getElementById('new-area-name').value = ''; return; }
+      if (a === 'saveArea')   { saveAreaBlock(discEl.dataset.id); return; }
+      if (a === 'removeArea') { removeAreaDisc(discEl.dataset.id); return; }
+    }
+
     const el = e.target.closest('[data-action]');
     if (!el) return;
     if (el.tagName === 'SELECT' && e.type === 'click') return; // handled by change
