@@ -4,6 +4,7 @@ export const state = {
     {
       id: 'seg-fund',
       name: 'Ensino Fundamental',
+      turno: 'manha',
       grades: [
         { name: '6º Ano', classes: [{ letter:'A', turno:'manha' }, { letter:'B', turno:'manha' }, { letter:'C', turno:'manha' }] },
         { name: '7º Ano', classes: [{ letter:'A', turno:'manha' }, { letter:'B', turno:'manha' }, { letter:'C', turno:'manha' }] },
@@ -14,10 +15,11 @@ export const state = {
     {
       id: 'seg-med',
       name: 'Ensino Médio',
+      turno: 'tarde',
       grades: [
-        { name: '1ª Série', classes: [{ letter:'A', turno:'manha' }, { letter:'B', turno:'manha' }, { letter:'C', turno:'manha' }] },
-        { name: '2ª Série', classes: [{ letter:'A', turno:'manha' }, { letter:'B', turno:'manha' }, { letter:'C', turno:'manha' }] },
-        { name: '3ª Série', classes: [{ letter:'A', turno:'manha' }, { letter:'B', turno:'manha' }, { letter:'C', turno:'manha' }] },
+        { name: '1ª Série', classes: [{ letter:'A', turno:'tarde' }, { letter:'B', turno:'tarde' }, { letter:'C', turno:'tarde' }] },
+        { name: '2ª Série', classes: [{ letter:'A', turno:'tarde' }, { letter:'B', turno:'tarde' }, { letter:'C', turno:'tarde' }] },
+        { name: '3ª Série', classes: [{ letter:'A', turno:'tarde' }, { letter:'B', turno:'tarde' }, { letter:'C', turno:'tarde' }] },
       ],
     },
   ],
@@ -25,12 +27,10 @@ export const state = {
   /* ── Configuração de períodos (por segmento × turno) ───────────────── */
   periodConfigs: {
     'seg-fund': {
-      manha: { inicio:'07:00', duracao:50, qtd:5, intervalos:[{ apos:3, duracao:20 }] },
-      tarde: { inicio:'13:00', duracao:50, qtd:5, intervalos:[{ apos:3, duracao:20 }] },
+      manha: { inicio:'07:00', duracao:50, qtd:7, intervalos:[{ apos:2, duracao:10 }, { apos:5, duracao:60 }] },
     },
     'seg-med': {
-      manha: { inicio:'07:00', duracao:50, qtd:5, intervalos:[{ apos:3, duracao:20 }] },
-      tarde: { inicio:'13:00', duracao:50, qtd:5, intervalos:[{ apos:3, duracao:20 }] },
+      tarde: { inicio:'12:30', duracao:50, qtd:7, intervalos:[{ apos:2, duracao:10 }, { apos:5, duracao:60 }] },
     },
   },
 
