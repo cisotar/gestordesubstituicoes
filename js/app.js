@@ -12,7 +12,7 @@ import { loadFromFirestore }         from './db.js';
 import { initAuth }                  from './auth.js';
 import { registerEvents }            from './events.js';
 import { updateNav }                 from './nav.js';
-import { renderCalendar }            from './render.js';
+import { renderHome }                from './home.js';
 import { IS_LOCAL, dev, applyDevAuth, mountDevPanel } from './devmode.js';
 
 setLoadingVisible(true);
@@ -35,7 +35,7 @@ try {
 
 registerEvents();
 updateNav();
-renderCalendar();
+renderHome();
 setLoadingVisible(false);
 
 // Painel dev só aparece em localhost

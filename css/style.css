@@ -1154,3 +1154,121 @@ code {
   white-space: nowrap;
   font-family: 'DM Mono', monospace;
 }
+
+/* ═══ PENDING BADGE ══════════════════════════════════════════════════════════ */
+.pending-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 20px;
+  background: #EF4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ═══ HOME PAGE ══════════════════════════════════════════════════════════════ */
+
+/* Tabs de segmento na home */
+.home-seg-tab {
+  padding: 10px 24px;
+  border-radius: var(--r);
+  border: 2px solid var(--bdr);
+  background: var(--surf);
+  font-family: 'Figtree', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t2);
+  cursor: pointer;
+  transition: all .15s;
+}
+.home-seg-tab:hover { border-color: var(--bdr2); color: var(--t1); }
+.home-seg-tab.on {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+/* Cards de professor na lista */
+.home-teacher-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--bdr);
+  background: var(--surf);
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Figtree', sans-serif;
+  transition: all .12s;
+  width: 100%;
+}
+.home-teacher-card:hover:not(.home-teacher-empty) {
+  border-color: var(--bdr2);
+  box-shadow: var(--sh);
+  transform: translateX(2px);
+}
+.home-teacher-card.selected {
+  border-color: var(--navy);
+  background: #F8FAFF;
+}
+.home-teacher-empty {
+  opacity: .55;
+  cursor: default;
+}
+.home-teacher-av {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* Cards de dia na grade semanal */
+.home-day-card {
+  padding: 12px 10px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--bdr);
+  background: var(--surf);
+  cursor: pointer;
+  text-align: center;
+  font-family: 'Figtree', sans-serif;
+  transition: all .12s;
+  width: 100%;
+}
+.home-day-card:hover:not(:disabled) {
+  border-color: var(--navy);
+  box-shadow: var(--sh);
+  transform: translateY(-2px);
+}
+.home-day-card:disabled { opacity: .4; cursor: default; }
+.home-day-today {
+  border-color: var(--accent) !important;
+  background: var(--accent-l);
+}
+.home-day-empty { background: var(--surf2); }
+.home-day-name  { font-weight: 700; font-size: 13px; color: var(--t1); }
+.home-day-date  {
+  font-size: 11px;
+  color: var(--t2);
+  font-family: 'DM Mono', monospace;
+  margin-top: 2px;
+}
+
+/* Linhas do modal do dia */
+.day-modal-row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--bdr);
+}
+.day-modal-row:last-child { border-bottom: none; }
+.day-modal-absent { background: #FFF8F8; border-radius: var(--r); padding: 14px 10px; }

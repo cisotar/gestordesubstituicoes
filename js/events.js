@@ -169,6 +169,15 @@ const ACTION_MAP = {
 export function registerEvents() {
   // Clicks
   document.addEventListener('click', e => {
+    // Home page actions
+    const homeEl = e.target.closest('[data-home-action]');
+    if (homeEl) {
+      import('./home.js').then(({ handleHomeAction }) => {
+        handleHomeAction(homeEl.dataset.homeAction, homeEl);
+      });
+      return;
+    }
+
     // Absence page actions
     const abEl = e.target.closest('[data-ab-action]');
     if (abEl) { handleAbsenceAction(abEl.dataset.abAction, abEl); return; }
