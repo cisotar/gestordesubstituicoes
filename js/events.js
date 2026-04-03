@@ -14,6 +14,7 @@ import {
   addClassToGrade, removeClassFromGrade, setSegmentTurno,
   addSchedule, removeSchedule,
   savePeriodCfg, addIntervalo, removeIntervalo, saveTeacherSubjects,
+  addAreaDisc, saveAreaBlock, removeAreaDisc, showToast,
 } from './actions.js';
 import { deleteHistoryEntry }   from './history.js';
 import { renderDashboard }      from './dashboard.js';
@@ -231,6 +232,20 @@ export function registerEvents() {
     if (el.tagName === 'SELECT' && e.type === 'click') return; // handled by change
     const handler = ACTION_MAP[el.dataset.action];
     if (handler) handler(el);
+  });
+
+  // Auto-save para aba Disciplinas (debounce 800ms)
+  let _discTimer = null;
+  document.addEventListener('input', e => {
+    const isDiscName = e.target.matches('.disc-area-name');
+    const isDiscTxt  = e.target.matches('.disc-textarea');
+    if (!isDiscName && !isDiscTxt) return;
+    const areaId = e.target.id.replace('disc-name-','').replace('disc-txt-','');
+    if (!areaId) return;
+    clearTimeout(_discTimer);
+    _discTimer = setTimeout(() => {
+      saveAreaBlock(areaId, true);
+    }, 800);
   });
 
   // Change (selects e inputs de período)
