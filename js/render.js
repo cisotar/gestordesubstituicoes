@@ -520,9 +520,6 @@ function tabTeachers() {
 
 // ── Tab: Horários ─────────────────────────────────────────────────────────────
 
-// UI state for the schedules tab (module-level, reset on stab change)
-export const schedUI = { teacherId: null, segmentId: null };
-
 // ── Tab: Horários ─────────────────────────────────────────────────────────────
 
 export const schedUI = { teacherId: null };
