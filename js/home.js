@@ -1,3 +1,4 @@
+import { toast } from './toast.js';
 /**
  * home.js — Página inicial redesenhada.
  */
@@ -588,6 +589,11 @@ export function openDayModal(date, teacherId) {
             data-tid="${teacherId}" data-date="${date}">
             ↺ Limpar substituições
           </button>` : ''}
+        <button class="btn btn-ghost btn-sm" style="color:var(--err)"
+          data-day-action="clearAllAbsences"
+          data-tid="${teacherId}" data-date="${date}">
+          🗑 Remover todas as faltas
+        </button>
         ${allHasSub ? `
           <button class="btn btn-dark btn-sm" data-day-action="downloadPDF"
             data-tid="${teacherId}" data-date="${date}">
@@ -615,6 +621,9 @@ export function openDayModal(date, teacherId) {
   });
   body.querySelectorAll('[data-day-action="clearAllSubs"]').forEach(btn => {
     btn.addEventListener('click', () => _clearAllSubs(date, teacherId));
+  });
+  body.querySelectorAll('[data-day-action="clearAllAbsences"]').forEach(btn => {
+    btn.addEventListener('click', () => _clearAllAbsences(date, teacherId));
   });
   body.querySelectorAll('[data-day-action="pickSub"]').forEach(btn => {
     btn.addEventListener('click', () => _openSubPickerFull(btn, date, teacherId));
@@ -682,7 +691,6 @@ function _clearAllSubs(date, teacherId) {
     ab.slots.filter(sl => sl.date === date && sl.substituteId).forEach(sl => {
       sl.substituteId = null;
     });
-    // Atualiza status
     const covered = ab.slots.filter(s => s.substituteId).length;
     const total   = ab.slots.length;
     ab.status = covered === 0 ? 'open' : covered < total ? 'partial' : 'covered';
@@ -690,6 +698,19 @@ function _clearAllSubs(date, teacherId) {
   saveState('Substituições removidas');
   updateNav();
   openDayModal(date, teacherId);
+  _refreshWeekGrid(teacherId);
+}
+
+function _clearAllAbsences(date, teacherId) {
+  if (!confirm('Remover todas as faltas e substituições deste dia?')) return;
+  state.absences = (state.absences ?? []).map(ab => {
+    if (ab.teacherId !== teacherId) return ab;
+    ab.slots = ab.slots.filter(sl => sl.date !== date);
+    return ab;
+  }).filter(ab => ab.slots.length > 0);
+  saveState('Todas as faltas do dia removidas');
+  updateNav();
+  document.getElementById('overlay')?.classList.remove('on');
   _refreshWeekGrid(teacherId);
 }
 

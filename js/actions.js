@@ -1,3 +1,4 @@
+import { toast } from './toast.js';
 import { state, saveState }    from './state.js';
 import { uid, findTurma }      from './helpers.js';
 import { updateNav, navigate } from './nav.js';
@@ -243,7 +244,7 @@ export function removeSchedule(id) {
 export function addAreaDisc(name) {
   if (!name?.trim()) return;
   if (state.areas.find(a => a.name.toLowerCase() === name.trim().toLowerCase())) {
-    showToast('Área já existe.', 'warn'); return;
+    toast('Área já existe.', 'warn'); return;
   }
   const colorIdx = state.areas.length % 9;
   state.areas.push({ id: uid(), name: name.trim(), colorIdx });
@@ -264,7 +265,7 @@ export function saveAreaBlock(areaId, auto = false) {
   if (!nameEl || !txtEl) return;
 
   const newName = nameEl.value.trim();
-  if (!newName) { nameEl.focus(); showToast('O nome da área não pode ser vazio.', 'warn'); return; }
+  if (!newName) { nameEl.focus(); toast('O nome da área não pode ser vazio.', 'warn'); return; }
 
   // Atualiza nome
   area.name = newName;
@@ -337,17 +338,3 @@ export function removeAreaDisc(areaId) {
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
-let _toastTimer = null;
-
-export function showToast(msg, type = 'ok') {
-  let el = document.getElementById('app-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'app-toast';
-    document.body.appendChild(el);
-  }
-  el.textContent = type === 'warn' ? `⚠ ${msg}` : `✓ ${msg}`;
-  el.className   = `toast-${type} toast-show`;
-  if (_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => { el.className = el.className.replace('toast-show',''); }, 3000);
-}

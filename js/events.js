@@ -19,7 +19,7 @@ import {
   addClassToGrade, removeClassFromGrade, setSegmentTurno,
   addSchedule, removeSchedule,
   savePeriodCfg, addIntervalo, removeIntervalo, saveTeacherSubjects,
-  addAreaDisc, saveAreaBlock, removeAreaDisc, showToast,
+  addAreaDisc, saveAreaBlock, removeAreaDisc,
 } from './actions.js';
 import { deleteHistoryEntry }   from './history.js';
 import { renderDashboard }      from './dashboard.js';
@@ -262,6 +262,14 @@ export function registerEvents() {
     const msEl = e.target.closest('[data-ms-action]');
     if (msEl?.dataset.msAction === 'gradeChange') {
       onGradeChange(msEl.dataset.seg, msEl.value);
+      return;
+    }
+
+    // Absence day picker
+    if (e.target.id === 'abs-day-picker') {
+      import('./absence-view.js').then(({ handleAbsenceAction }) => {
+        handleAbsenceAction('changeDay', e.target);
+      });
       return;
     }
 

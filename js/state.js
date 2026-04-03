@@ -1,3 +1,5 @@
+import { toast } from './toast.js';
+
 export const state = {
   /* ── Estrutura escolar ─────────────────────────────────────────────── */
   segments: [
@@ -68,15 +70,15 @@ export function saveState(msg = null) {
   _saveLocal();
 
   // Toast de "salvo localmente"
-  _toast(msg ? `💾 ${msg}` : '💾 Salvo localmente', 'local');
+  toast(msg ? `💾 ${msg}` : '💾 Salvo localmente', 'local');
 
   // Persiste no Firestore em background
   import('./db.js').then(({ saveToFirestore }) => {
     saveToFirestore()
-      .then(() => _toast('☁ Sincronizado com o servidor', 'ok'))
+      .then(() => toast('☁ Sincronizado com o servidor', 'ok'))
       .catch(e => {
         console.warn('[state] Falha ao sincronizar:', e);
-        _toast('⚠ Erro ao sincronizar. Dado salvo localmente.', 'warn');
+        toast('⚠ Erro ao sincronizar. Dado salvo localmente.', 'warn');
       });
   });
 }
@@ -94,20 +96,6 @@ function _saveLocal() {
   } catch (e) { /* storage full */ }
 }
 
-let _toastTimer = null;
-
-function _toast(msg, type = 'ok') {
-  let el = document.getElementById('app-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'app-toast';
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.className = `toast-${type} toast-show`;
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('toast-show'), 3000);
-}
 
 export function loadState() {
   // No-op: loading is handled by db.js loadFromFirestore() in app.js
