@@ -1532,3 +1532,57 @@ button.nav-logo span  { font-weight: 800; color: #fff; }
   color: var(--t3);
   margin-left: 2px;
 }
+
+/* ═══ LAYOUT RESPONSIVO — DESKTOP FIRST ════════════════════════════════════ */
+
+/* Home: lista de professores + grade lado a lado em monitor */
+.home-main-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .home-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Frames EF/EM na aba Horários */
+.sched-frames {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .sched-frames { grid-template-columns: 1fr; }
+}
+
+/* Cards de configurações lado a lado em monitor */
+.seg-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .seg-cards-grid { grid-template-columns: 1fr; }
+}
+
+/* Disciplinas lado a lado */
+.disc-list-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 900px) {
+  .disc-list-grid { grid-template-columns: 1fr; }
+}
+
+/* Toast ajustado para não sobrepor o painel dev */
+#app-toast {
+  bottom: 24px;
+}
+
+/* Toast tipo 'local' (salvo localmente) */
+.toast-local { background: #1E3A8A; color: #fff; }

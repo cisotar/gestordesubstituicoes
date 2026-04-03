@@ -11,12 +11,9 @@ export function addSegment(name, turno = 'manha') {
   if (!name?.trim()) return;
   const seg = { id: uid(), name: name.trim(), turno, grades: [] };
   state.segments.push(seg);
-  // Inicializa config de períodos só para o turno do segmento
   if (!state.periodConfigs) state.periodConfigs = {};
-  state.periodConfigs[seg.id] = {
-    [turno]: defaultCfg(turno),
-  };
-  saveState(); renderSettings();
+  state.periodConfigs[seg.id] = { [turno]: defaultCfg(turno) };
+  saveState(`Segmento '${seg.name}' criado`); renderSettings();
 }
 
 /** Define o turno de um segmento e migra as classes automaticamente */
@@ -24,22 +21,19 @@ export function setSegmentTurno(segId, turno) {
   const seg = state.segments.find(s => s.id === segId);
   if (!seg) return;
   seg.turno = turno;
-  // Atualiza o turno de todas as classes do segmento
   seg.grades.forEach(g => g.classes.forEach(c => { c.turno = turno; }));
-  // Garante config de período para o turno
   if (!state.periodConfigs)        state.periodConfigs = {};
   if (!state.periodConfigs[segId]) state.periodConfigs[segId] = {};
-  if (!state.periodConfigs[segId][turno]) {
-    state.periodConfigs[segId][turno] = defaultCfg(turno);
-  }
-  saveState(); renderSettings();
+  if (!state.periodConfigs[segId][turno]) state.periodConfigs[segId][turno] = defaultCfg(turno);
+  saveState(`Turno de '${seg.name}' alterado para ${turno}`); renderSettings();
 }
 
 export function removeSegment(id) {
   if (!confirm('Remover este segmento e todas as suas séries/turmas?')) return;
+  const segName = state.segments.find(s => s.id === id)?.name ?? '';
   state.segments = state.segments.filter(s => s.id !== id);
   if (state.periodConfigs) delete state.periodConfigs[id];
-  saveState(); renderSettings();
+  saveState(`Segmento '${segName}' removido`); renderSettings();
 }
 
 export function addGrade(segId, gradeName) {
@@ -47,14 +41,14 @@ export function addGrade(segId, gradeName) {
   const seg = state.segments.find(s => s.id === segId);
   if (!seg || seg.grades.find(g => g.name === gradeName.trim())) return;
   seg.grades.push({ name: gradeName.trim(), classes: [] });
-  saveState(); renderSettings();
+  saveState(`Série '${gradeName.trim()}' adicionada`); renderSettings();
 }
 
 export function removeGrade(segId, gradeName) {
   const seg = state.segments.find(s => s.id === segId);
   if (!seg) return;
   seg.grades = seg.grades.filter(g => g.name !== gradeName);
-  saveState(); renderSettings();
+  saveState(`Série '${gradeName}' removida`); renderSettings();
 }
 
 /** Adiciona uma letra de turma a uma série — turno herdado do segmento */
@@ -67,7 +61,7 @@ export function addClassToGrade(segId, gradeName, letter) {
   const turno = seg.turno ?? 'manha';
   grade.classes.push({ letter: up, turno });
   grade.classes.sort((a, b) => a.letter.localeCompare(b.letter));
-  saveState(); renderSettings();
+  saveState(`Turma ${up} adicionada`); renderSettings();
 }
 
 export function removeClassFromGrade(segId, gradeName, letter) {
@@ -75,7 +69,7 @@ export function removeClassFromGrade(segId, gradeName, letter) {
   const grade = seg?.grades.find(g => g.name === gradeName);
   if (!grade) return;
   grade.classes = grade.classes.filter(c => c.letter !== letter);
-  saveState(); renderSettings();
+  saveState(`Turma ${letter} removida`); renderSettings();
 }
 
 /** Atualiza o turno de uma turma específica */
@@ -85,7 +79,7 @@ export function setClassTurno(segId, gradeName, letter, turno) {
   const cls   = grade?.classes.find(c => c.letter === letter);
   if (!cls) return;
   cls.turno = turno;
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
 }
 
 // ─── Configuração de Períodos ────────────────────────────────────────────────
@@ -103,14 +97,14 @@ export function addIntervalo(segId, turno) {
   if (!cfg.intervalos) cfg.intervalos = [];
   const ultimo = cfg.intervalos.slice(-1)[0];
   cfg.intervalos.push({ apos: ultimo ? Math.min(ultimo.apos + 1, cfg.qtd) : 3, duracao: 20 });
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
 }
 
 export function removeIntervalo(segId, turno, idx) {
   const cfg = state.periodConfigs?.[segId]?.[turno];
   if (!cfg?.intervalos) return;
   cfg.intervalos.splice(idx, 1);
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
 }
 
 // ─── Áreas ────────────────────────────────────────────────────────────────────
@@ -123,7 +117,7 @@ export function addAreasBulk(rawText) {
     state.areas.push({ id: uid(), name, colorIdx: state.areas.length });
     added++;
   });
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
   return added;
 }
 
@@ -134,7 +128,7 @@ export function removeArea(id) {
   state.areas    = state.areas.filter(a => a.id !== id);
   state.subjects = state.subjects.filter(s => s.areaId !== id);
   state.teachers.forEach(t => { t.subjectIds = t.subjectIds.filter(sid => !removedIds.has(sid)); });
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
 }
 
 // ─── Matérias ─────────────────────────────────────────────────────────────────
@@ -149,14 +143,14 @@ export function addSubjectsBulk(areaId, rawText) {
     state.subjects.push({ id: uid(), name, areaId });
     added++;
   });
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
   return added;
 }
 
 export function removeSubject(id) {
   state.subjects = state.subjects.filter(s => s.id !== id);
   state.teachers.forEach(t => { t.subjectIds = t.subjectIds.filter(sid => sid !== id); });
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
 }
 
 // ─── Professores ─────────────────────────────────────────────────────────────
@@ -169,7 +163,7 @@ export function addTeachersBulk(rawText) {
     state.teachers.push({ id: uid(), name, subjectIds: [], email: '', whatsapp: '', celular: '' });
     added++;
   });
-  saveState(); updateNav(); renderSettings();
+  saveState(`${added} professor${added !== 1 ? 'es' : ''} adicionado${added !== 1 ? 's' : ''}`); updateNav(); renderSettings();
   return added;
 }
 
@@ -181,26 +175,27 @@ export function addTeacher() {
     alert('Professor já cadastrado.'); return;
   }
   state.teachers.push({ id: uid(), name, subjectIds: [], email: '', whatsapp: '', celular: '' });
-  saveState(); updateNav(); renderSettings();
+  saveState(`Professor '${name}' cadastrado`); updateNav(); renderSettings();
   setTimeout(() => el?.focus(), 30);
 }
 
 export function removeTeacher(id) {
   const t = state.teachers.find(x => x.id === id);
   if (!t || !confirm(`Remover "${t.name}"?`)) return;
+  const tName = t.name;
   state.teachers  = state.teachers.filter(x => x.id !== id);
   state.schedules = state.schedules.filter(s => s.teacherId !== id);
   Object.keys(state.subs).forEach(k => {
     if (k.startsWith(id + '||') || state.subs[k] === id) delete state.subs[k];
   });
-  saveState(); updateNav(); renderSettings();
+  saveState(`Professor '${tName}' removido`); updateNav(); renderSettings();
 }
 
 export function saveTeacherSubjects(teacherId, subjectIds) {
   const teacher = state.teachers.find(t => t.id === teacherId);
   if (!teacher) return;
   teacher.subjectIds = subjectIds;
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
 }
 
 /** Salva os dados de contato de um professor */
@@ -210,7 +205,7 @@ export function saveTeacherContacts(teacherId, { email, whatsapp, celular }) {
   teacher.email    = email    ?? teacher.email    ?? '';
   teacher.whatsapp = whatsapp ?? teacher.whatsapp ?? '';
   teacher.celular  = celular  ?? teacher.celular  ?? '';
-  saveState(); renderSettings();
+  saveState('Alterações salvas'); renderSettings();
 }
 
 // ─── Horários ─────────────────────────────────────────────────────────────────
@@ -252,17 +247,15 @@ export function addAreaDisc(name) {
   }
   const colorIdx = state.areas.length % 9;
   state.areas.push({ id: uid(), name: name.trim(), colorIdx });
-  saveState();
-  // Re-renderiza só o bloco da lista, não a aba inteira
+  saveState(`Área '${name.trim()}' criada`);
   import('./render.js').then(({ renderSettings }) => renderSettings());
-  showToast('Área criada.');
 }
 
 /**
  * Salva o nome e as matérias de uma área a partir do bloco da UI.
  * Lê o input de nome e o textarea de matérias diretamente do DOM.
  */
-export function saveAreaBlock(areaId) {
+export function saveAreaBlock(areaId, auto = false) {
   const area = state.areas.find(a => a.id === areaId);
   if (!area) return;
 
@@ -301,7 +294,7 @@ export function saveAreaBlock(areaId) {
     }
   });
 
-  saveState();
+  saveState(auto ? 'Disciplinas salvas automaticamente' : 'Disciplinas salvas');
 
   // Atualiza o contador no header do bloco sem re-renderizar tudo
   const block = document.getElementById(`disc-block-${areaId}`);
@@ -317,7 +310,7 @@ export function saveAreaBlock(areaId) {
     });
   }
 
-  showToast('Alterações salvas com sucesso!');
+  // toast já é emitido pelo saveState
 }
 
 /**
@@ -335,12 +328,11 @@ export function removeAreaDisc(areaId) {
     t.subjectIds = (t.subjectIds ?? []).filter(id => !subIds.includes(id));
   });
 
+  const aName = state.areas.find(a => a.id === areaId)?.name ?? '';
   state.areas = state.areas.filter(a => a.id !== areaId);
-  saveState();
+  saveState(`Área '${aName}' removida`);
 
-  // Remove o bloco do DOM sem re-renderizar tudo
   document.getElementById(`disc-block-${areaId}`)?.remove();
-  showToast('Área removida.');
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────

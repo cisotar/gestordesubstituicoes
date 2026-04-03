@@ -60,13 +60,53 @@ export const state = {
 };
 
 /**
- * saveState — persiste no Firestore em background (fire-and-forget).
- * Não bloqueia a UI. Erros são logados silenciosamente.
+ * saveState — salva localmente via localStorage e persiste no Firestore em background.
+ * Emite toasts para cada etapa: salvo localmente, sincronizado, ou erro.
  */
-export function saveState() {
+export function saveState(msg = null) {
+  // Salva no localStorage imediatamente (síncrono)
+  _saveLocal();
+
+  // Toast de "salvo localmente"
+  _toast(msg ? `💾 ${msg}` : '💾 Salvo localmente', 'local');
+
+  // Persiste no Firestore em background
   import('./db.js').then(({ saveToFirestore }) => {
-    saveToFirestore().catch(e => console.warn('[state] Falha ao salvar:', e));
+    saveToFirestore()
+      .then(() => _toast('☁ Sincronizado com o servidor', 'ok'))
+      .catch(e => {
+        console.warn('[state] Falha ao sincronizar:', e);
+        _toast('⚠ Erro ao sincronizar. Dado salvo localmente.', 'warn');
+      });
   });
+}
+
+function _saveLocal() {
+  try {
+    const { segments, periodConfigs, areas, subjects, teachers,
+            schedules, subs, absences, history,
+            workloadWarn, workloadDanger } = state;
+    localStorage.setItem('gestao_v7_cache', JSON.stringify({
+      segments, periodConfigs, areas, subjects, teachers,
+      schedules, subs: subs ?? {}, absences: absences ?? [],
+      history: history ?? [], workloadWarn, workloadDanger,
+    }));
+  } catch (e) { /* storage full */ }
+}
+
+let _toastTimer = null;
+
+function _toast(msg, type = 'ok') {
+  let el = document.getElementById('app-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'app-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = `toast-${type} toast-show`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('toast-show'), 3000);
 }
 
 export function loadState() {

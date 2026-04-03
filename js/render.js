@@ -305,9 +305,10 @@ function tabSegments() {
   }).join('');
 
   return `
-    <div style="max-width:780px">
-      ${segCards}
-      <div class="card card-b" style="background:var(--surf2)">
+    <div>
+      <div class="seg-cards-grid">${segCards}</div>
+      </div>
+      <div class="card card-b" style="background:var(--surf2);margin-top:20px">
         <h3 style="margin-bottom:12px;font-size:14px">Novo Segmento</h3>
         <div style="display:flex;gap:8px;align-items:center">
           <input class="inp" id="new-seg-name" placeholder="Ex: Educação Infantil" style="flex:1">
@@ -452,7 +453,7 @@ function tabDisciplines() {
       </div>
 
       <!-- Blocos de áreas -->
-      <div id="disc-list" style="display:flex;flex-direction:column;gap:14px">
+      <div id="disc-list" class="disc-list-grid">
         ${blocks || '<div class="empty"><div class="empty-ico">📚</div><div class="empty-ttl">Nenhuma área cadastrada</div><div class="empty-dsc">Adicione uma área acima para começar.</div></div>'}
       </div>
     </div>`;

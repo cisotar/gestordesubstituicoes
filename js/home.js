@@ -130,7 +130,7 @@ function _renderTeacherList(seg) {
   const weekGrid = homeUI.teacherId ? _renderWeekGrid(homeUI.teacherId, seg) : '';
 
   return `
-    <div style="display:grid;grid-template-columns:280px 1fr;gap:24px;align-items:start">
+    <div class="home-main-grid">
       <div>
         <div style="font-size:11px;font-weight:700;color:var(--t3);
           text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
@@ -622,7 +622,9 @@ export function openDayModal(date, teacherId) {
   body.querySelectorAll('[data-pick-tid]').forEach(btn => {
     btn.addEventListener('click', () => {
       assignSubstitute(btn.dataset.pickAbs, btn.dataset.pickSlt, btn.dataset.pickTid);
-      saveState(); updateNav();
+      const subName = state.teachers.find(t => t.id === btn.dataset.pickTid)?.name ?? '';
+      saveState(`Substituto: ${subName}`);
+      updateNav();
       openDayModal(btn.dataset.pickDate, btn.dataset.pickTeacher);
       _refreshWeekGrid(btn.dataset.pickTeacher);
     });
@@ -642,9 +644,8 @@ function _markAbsentAndSuggest(btn, date, teacherId) {
   const absenceId = createAbsence(teacherId, [{
     date, timeSlot: slot, scheduleId: schedId, subjectId: subj || null, turma,
   }]);
-  saveState();
+  saveState('Falta registrada');
   updateNav();
-  // Reabre o modal do dia para mostrar sugestões inline
   openDayModal(date, teacherId);
   _refreshWeekGrid(teacherId);
 }
@@ -668,7 +669,8 @@ function _markDayAll(date, teacherId) {
     .map(s => ({ date, timeSlot: s.timeSlot, scheduleId: s.id, subjectId: s.subjectId ?? null, turma: s.turma }));
   if (!rawSlots.length) return;
   createAbsence(teacherId, rawSlots);
-  saveState(); updateNav();
+  saveState(`${rawSlots.length} falta${rawSlots.length !== 1 ? 's' : ''} registrada${rawSlots.length !== 1 ? 's' : ''} no dia`);
+  updateNav();
   openDayModal(date, teacherId);
   _refreshWeekGrid(teacherId);
 }
@@ -685,7 +687,8 @@ function _clearAllSubs(date, teacherId) {
     const total   = ab.slots.length;
     ab.status = covered === 0 ? 'open' : covered < total ? 'partial' : 'covered';
   });
-  saveState(); updateNav();
+  saveState('Substituições removidas');
+  updateNav();
   openDayModal(date, teacherId);
   _refreshWeekGrid(teacherId);
 }
@@ -702,7 +705,8 @@ function _acceptAllSuggestions(date, teacherId) {
     });
   });
 
-  saveState(); updateNav();
+  saveState('Substituições confirmadas');
+  updateNav();
   openDayModal(date, teacherId);
   _refreshWeekGrid(teacherId);
 }
