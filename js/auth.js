@@ -203,7 +203,7 @@ export async function openPendingManager() {
   body.innerHTML = `<div style="padding:20px;text-align:center;color:var(--t2)">⏳ Carregando…</div>`;
   overlay.classList.add('on');
 
-  const pending = await listPendingTeachers();
+  const pending = await listPendingTeachers().catch(() => []);
   authState.pendingCt = pending.length;
   _updatePendingBadge();
 
