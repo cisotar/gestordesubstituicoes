@@ -396,7 +396,7 @@ function _renderCandCard(c, absenceId, slotId, date, teacherId, compact = false)
     return ab?.slots.find(s => s.id === slotId)?.substituteId;
   })();
   const icon   = c.match === 'subject' ? '⭐ mesma matéria' : c.match === 'area' ? '🔵 mesma área' : '⚪ outra área';
-  const loadTxt = `${c.load} aula${c.load !== 1 ? 's' : ''}/sem.`;
+  const loadTxt = `${c.load} aula${c.load !== 1 ? 's' : ''}/mês`;
 
   if (compact) {
     return `
@@ -553,6 +553,7 @@ export function openDayModal(date, teacherId) {
   const allAbsent   = mine.length > 0 && mine.every(s => absenceMap[s.timeSlot]);
   const anyAbsent   = mine.some(s => absenceMap[s.timeSlot]);
   const allHasSub   = mine.every(s => absenceMap[s.timeSlot]?.substituteId);
+  const anySub      = mine.some(s => absenceMap[s.timeSlot]?.substituteId);
 
   body.innerHTML = `
     <div class="m-hdr">
@@ -581,6 +582,12 @@ export function openDayModal(date, teacherId) {
             data-tid="${teacherId}" data-date="${date}">
             ✓ Aceitar todas as sugestões
           </button>` : ''}
+        ${anySub ? `
+          <button class="btn btn-ghost btn-sm" style="color:var(--err)"
+            data-day-action="clearAllSubs"
+            data-tid="${teacherId}" data-date="${date}">
+            ↺ Limpar substituições
+          </button>` : ''}
         ${allHasSub ? `
           <button class="btn btn-dark btn-sm" data-day-action="downloadPDF"
             data-tid="${teacherId}" data-date="${date}">
@@ -605,6 +612,9 @@ export function openDayModal(date, teacherId) {
   });
   body.querySelectorAll('[data-day-action="clearAbs"]').forEach(btn => {
     btn.addEventListener('click', () => _clearAbsent(btn.dataset.abs, btn.dataset.slt, date, teacherId));
+  });
+  body.querySelectorAll('[data-day-action="clearAllSubs"]').forEach(btn => {
+    btn.addEventListener('click', () => _clearAllSubs(date, teacherId));
   });
   body.querySelectorAll('[data-day-action="pickSub"]').forEach(btn => {
     btn.addEventListener('click', () => _openSubPickerFull(btn, date, teacherId));
@@ -658,6 +668,23 @@ function _markDayAll(date, teacherId) {
     .map(s => ({ date, timeSlot: s.timeSlot, scheduleId: s.id, subjectId: s.subjectId ?? null, turma: s.turma }));
   if (!rawSlots.length) return;
   createAbsence(teacherId, rawSlots);
+  saveState(); updateNav();
+  openDayModal(date, teacherId);
+  _refreshWeekGrid(teacherId);
+}
+
+function _clearAllSubs(date, teacherId) {
+  if (!confirm('Remover todos os substitutos deste dia? As faltas continuam registradas.')) return;
+  (state.absences ?? []).forEach(ab => {
+    if (ab.teacherId !== teacherId) return;
+    ab.slots.filter(sl => sl.date === date && sl.substituteId).forEach(sl => {
+      sl.substituteId = null;
+    });
+    // Atualiza status
+    const covered = ab.slots.filter(s => s.substituteId).length;
+    const total   = ab.slots.length;
+    ab.status = covered === 0 ? 'open' : covered < total ? 'partial' : 'covered';
+  });
   saveState(); updateNav();
   openDayModal(date, teacherId);
   _refreshWeekGrid(teacherId);
