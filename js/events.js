@@ -7,6 +7,11 @@ import {
   openEditSchedule, saveEditSchedule,
 } from './modal.js';
 import {
+  openScheduleModal, closeScheduleModal,
+  saveScheduleModal, onGradeChange,
+  removeScheduleImmediate,
+} from './modal-schedule.js';
+import {
   addTeacher, addTeachersBulk, removeTeacher,
   addAreasBulk, removeArea,
   addSubjectsBulk, removeSubject,
