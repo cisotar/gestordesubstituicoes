@@ -282,17 +282,7 @@ function tabSegments() {
             <h3 class="seg-title">${h(seg.name)}</h3>
             <div class="seg-meta">${seg.grades.length} série${seg.grades.length !== 1 ? 's' : ''} · ${totalTurmas} turma${totalTurmas !== 1 ? 's' : ''}</div>
           </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div class="fld" style="margin:0;flex-direction:row;align-items:center;gap:8px">
-              <label class="lbl" style="margin:0;white-space:nowrap">Turno:</label>
-              <select class="inp" style="width:120px;padding:5px 8px;font-size:13px"
-                data-action="setSegmentTurno" data-seg="${seg.id}">
-                <option value="manha" ${segTurno === 'manha' ? 'selected' : ''}>🌅 Manhã</option>
-                <option value="tarde" ${segTurno === 'tarde' ? 'selected' : ''}>🌇 Tarde</option>
-              </select>
-            </div>
-            <button class="btn-del" data-action="removeSegment" data-id="${seg.id}">✕</button>
-          </div>
+          <button class="btn-del" data-action="removeSegment" data-id="${seg.id}">✕</button>
         </div>
         <div class="grade-list">${gradeRows || '<p class="no-grades">Nenhuma série. Adicione abaixo.</p>'}</div>
         <div class="add-grade-row">
@@ -321,10 +311,6 @@ function tabSegments() {
         <h3 style="margin-bottom:12px;font-size:14px">Novo Segmento</h3>
         <div style="display:flex;gap:8px;align-items:center">
           <input class="inp" id="new-seg-name" placeholder="Ex: Educação Infantil" style="flex:1">
-          <select class="inp" id="new-seg-turno" style="width:120px;padding:5px 8px;font-size:13px">
-            <option value="manha">🌅 Manhã</option>
-            <option value="tarde">🌇 Tarde</option>
-          </select>
           <button class="btn btn-dark" data-action="addSegment">Adicionar</button>
         </div>
       </div>
@@ -368,16 +354,16 @@ function tabPeriods() {
 
     return `
       <div class="card card-b" style="margin-bottom:20px;max-width:560px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
           <h3>${h(seg.name)}</h3>
-          <span style="font-size:12px;padding:3px 10px;border-radius:20px;font-weight:600;
-            background:${turno === 'tarde' ? '#FEF3C7' : '#DBEAFE'};
-            color:${turno === 'tarde' ? '#78350F' : '#1E3A8A'}">
-            ${turnoLabel}
-          </span>
-          <span style="font-size:11px;color:var(--t3)">
-            Para alterar o turno, vá em 🏫 Segmentos
-          </span>
+          <div class="fld" style="margin:0;flex-direction:row;align-items:center;gap:8px">
+            <label class="lbl" style="margin:0;white-space:nowrap;font-size:12px">Turno:</label>
+            <select class="inp" style="width:120px;padding:5px 8px;font-size:13px"
+              data-action="setSegmentTurno" data-seg="${seg.id}">
+              <option value="manha" ${turno === 'manha' ? 'selected' : ''}>🌅 Manhã</option>
+              <option value="tarde" ${turno === 'tarde' ? 'selected' : ''}>🌇 Tarde</option>
+            </select>
+          </div>
         </div>
         <div class="periodo-cfg-grid">
           <div class="fld">

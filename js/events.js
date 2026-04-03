@@ -108,7 +108,7 @@ const ACTION_MAP = {
   stab:                el => setSettingsTab(el.dataset.tab),
 
   // Segmentos
-  addSegment:          ()  => addSegment(v('new-seg-name'), document.getElementById('new-seg-turno')?.value ?? 'manha'),
+  addSegment:          ()  => addSegment(v('new-seg-name')),
   removeSegment:       el  => removeSegment(el.dataset.id),
   addGrade:            el  => { addGrade(el.dataset.seg, v(`grade-inp-${el.dataset.seg}`)); },
   removeGrade:         el  => removeGrade(el.dataset.seg, el.dataset.val),

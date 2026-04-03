@@ -1424,3 +1424,54 @@ code {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* ═══ ITERAÇÃO 1 — logo como botão home ═════════════════════════════════════ */
+button.nav-logo {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Figtree', sans-serif;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  padding: 4px 8px;
+  border-radius: var(--r);
+  transition: background .12s;
+  line-height: 1;
+}
+button.nav-logo:hover { background: rgba(255,255,255,.1); }
+button.nav-logo span  { font-weight: 800; color: #fff; }
+
+/* ═══ ITERAÇÃO 2 — home hero compacto ═══════════════════════════════════════ */
+.home-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 20px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--bdr);
+  background: var(--surf);
+  margin-bottom: 16px;
+  max-width: 480px;
+}
+.home-hero-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--t1);
+  line-height: 1;
+}
+.home-hero-title span { color: var(--navy); }
+.home-hero-sub {
+  font-size: 13px;
+  color: var(--t2);
+  line-height: 1.4;
+}
+
+/* ═══ ITERAÇÃO 5 — cores dos horários e cards ════════════════════════════════ */
+/* Horários de início/fim em preto */
+.sl-t  { color: var(--t1) !important; }
+.sl-n  { color: var(--t1); }
+
+/* Cards da grade: turma + matéria em preto */
+.sched-card-name { color: var(--t1) !important; }
+.sched-card-info { color: var(--t1) !important; opacity: .75; }

@@ -62,18 +62,18 @@ export function renderHome() {
 
   const content = homeUI.segmentId
     ? _renderTeacherList(state.segments.find(s => s.id === homeUI.segmentId))
-    : `<div class="empty" style="max-width:480px">
-        <div class="empty-ico">🏫</div>
-        <div class="empty-ttl">Selecione o nível de ensino</div>
-        <div class="empty-dsc">Escolha entre Ensino Fundamental e Ensino Médio para ver os professores e horários.</div>
-       </div>`;
+    : '';
 
   el.innerHTML = `
-    <div class="ph" style="margin-bottom:16px">
-      <h2>Calendário Semanal</h2>
-      <p>Selecione um nível e depois um professor para ver os horários da semana.</p>
+    <!-- Frame de boas-vindas compacto -->
+    <div class="home-hero">
+      <div class="home-hero-title"><span>Gestão</span>Escolar</div>
+      <div class="home-hero-sub">Selecione o nível de ensino para ver os professores e horários da semana.</div>
     </div>
+
+    <!-- Botões de nível -->
     <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">${segTabs}</div>
+
     ${content}`;
 }
 
@@ -86,14 +86,15 @@ function _renderTeacherList(seg) {
     seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`))
   );
 
-  const teachers = state.teachers.map(t => {
-    const inSeg = state.schedules.filter(s => s.teacherId === t.id && segTurmas.has(s.turma));
-    return { teacher: t, inSeg };
-  }).sort((a, b) => {
-    if (a.inSeg.length > 0 && b.inSeg.length === 0) return -1;
-    if (a.inSeg.length === 0 && b.inSeg.length > 0) return  1;
-    return a.teacher.name.localeCompare(b.teacher.name);
-  });
+  // Mostra só professores com aulas neste segmento
+  // (professores sem aulas no segmento são omitidos)
+  const teachers = state.teachers
+    .map(t => {
+      const inSeg = state.schedules.filter(s => s.teacherId === t.id && segTurmas.has(s.turma));
+      return { teacher: t, inSeg };
+    })
+    .filter(({ inSeg }) => inSeg.length > 0)
+    .sort((a, b) => a.teacher.name.localeCompare(b.teacher.name));
 
   const cards = teachers.map(({ teacher: t, inSeg }) => {
     const cv      = colorOfTeacher(t);
@@ -263,7 +264,7 @@ function _gridViewC(dates, mine, periodos, absenceSlots, subMap, teacherId, cv) 
               ${h(sched.turma)}
             </div>
             <div style="font-size:11px;margin-top:1px;
-              color:${isAbs ? '#B91C1C' : 'var(--t2)'};
+              color:${isAbs ? '#B91C1C' : 'var(--t1)'};
               white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
               ${h(subj?.name ?? '—')}
             </div>
@@ -344,9 +345,9 @@ function _gridViewB(dates, mine, periodos, absenceSlots, subMap, teacherId, cv) 
             background:${isAbs ? '#FCEBEB' : cv.bg};
             cursor:pointer;font-family:'Figtree',sans-serif;transition:all .12s"
             data-home-action="openDay" data-date="${date}" data-tid="${teacherId}">
-            <div style="font-weight:700;font-size:12px;color:${isAbs ? '#991B1B' : cv.tx}">
+            <div style="font-weight:700;font-size:12px;color:${isAbs ? '#991B1B' : 'var(--t1)'}">
               ${h(sched.turma)}</div>
-            <div style="font-size:11px;margin-top:1px;color:${isAbs ? '#B91C1C' : cv.tx};opacity:.8">
+            <div style="font-size:11px;margin-top:1px;color:${isAbs ? '#B91C1C' : 'var(--t1)'}">
               ${h(subj?.name ?? '—')}</div>
             ${isAbs ? `<div style="font-size:10px;margin-top:3px;
               color:${subT ? '#065F46' : 'var(--err)'};font-weight:600">
