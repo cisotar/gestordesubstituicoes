@@ -149,8 +149,7 @@ const ACTION_MAP = {
   saveEditTeacher:     el  => saveEditTeacher(el.dataset.id),
 
   // Horários — grid por professor
-  schedSelectTeacher:       el  => { schedUI.teacherId = el.value || null; schedUI.segmentId = null; renderSettings(); },
-  schedSelectSegment:       el  => { schedUI.segmentId = el.dataset.seg || null; renderSettings(); },
+  schedSelectTeacher:       el  => { schedUI.teacherId = el.dataset.tid || el.value || null; renderSettings(); },
   openScheduleModal:        el  => openScheduleModal(el.dataset.seg, el.dataset.turno, Number(el.dataset.aula), el.dataset.day, el.dataset.teacher),
   saveScheduleModal:        el  => saveScheduleModal(el.dataset.seg, el.dataset.turno, Number(el.dataset.aula), el.dataset.day, el.dataset.teacher),
   removeScheduleImmediate:  el  => removeScheduleImmediate(el.dataset.id, el.dataset.seg, el.dataset.turno, Number(el.dataset.aula), el.dataset.day, el.dataset.teacher),

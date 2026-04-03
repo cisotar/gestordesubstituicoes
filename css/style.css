@@ -1475,3 +1475,60 @@ button.nav-logo span  { font-weight: 800; color: #fff; }
 /* Cards da grade: turma + matéria em preto */
 .sched-card-name { color: var(--t1) !important; }
 .sched-card-info { color: var(--t1) !important; opacity: .75; }
+
+/* ═══ ITERAÇÃO 4 — dois frames de horários ═══════════════════════════════════ */
+.sched-frames {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 0;
+}
+.sched-seg-frame {
+  border: 1.5px solid var(--bdr);
+  border-radius: var(--rl);
+  background: var(--surf);
+  overflow: hidden;
+}
+.sched-seg-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surf2);
+  border-bottom: 1px solid var(--bdr);
+}
+.sched-prof-list {
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sched-prof-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--bdr);
+  background: var(--surf);
+  cursor: pointer;
+  font-family: 'Figtree', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t1);
+  transition: all .12s;
+}
+.sched-prof-btn:hover { border-color: var(--bdr2); background: var(--surf2); }
+.sched-prof-btn.on    { font-weight: 700; }
+.sched-prof-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sched-prof-ct {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--t3);
+  margin-left: 2px;
+}

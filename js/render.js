@@ -523,90 +523,112 @@ function tabTeachers() {
 // UI state for the schedules tab (module-level, reset on stab change)
 export const schedUI = { teacherId: null, segmentId: null };
 
+// ── Tab: Horários ─────────────────────────────────────────────────────────────
+
+export const schedUI = { teacherId: null };
+
 function tabSchedules() {
   if (state.segments.length === 0)
     return emptyTabGuard('Cadastre segmentos primeiro.', 'segments', '🏫 Segmentos');
   if (state.teachers.length === 0)
     return emptyTabGuard('Cadastre professores antes de adicionar horários.', 'teachers', '👩‍🏫 Professores');
 
-  const tOpts = `<option value="">— Selecione o professor —</option>` +
-    state.teachers.map(t => {
-      const ct = state.schedules.filter(s => s.teacherId === t.id).length;
-      return `<option value="${t.id}" ${t.id === schedUI.teacherId ? 'selected' : ''}>
-        ${h(t.name)}${ct ? ` (${ct} aula${ct > 1 ? 's' : ''})` : ''}
-      </option>`;
+  // ── Dois frames: EF e EM, cada um com seus professores como botões ──────
+  const frames = state.segments.map(seg => {
+    const segTurmas = new Set(
+      seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`))
+    );
+    const profsSeg = state.teachers.filter(t =>
+      state.schedules.some(s => s.teacherId === t.id && segTurmas.has(s.turma))
+    ).sort((a, b) => a.name.localeCompare(b.name));
+
+    const profBtns = profsSeg.map(t => {
+      const cv    = colorOfTeacher(t);
+      const isSel = t.id === schedUI.teacherId;
+      const ct    = state.schedules.filter(s => s.teacherId === t.id &&
+        [...segTurmas].some(tr => state.schedules.find(x => x.id === s.id && x.turma === tr)) ||
+        state.schedules.filter(s => s.teacherId === t.id && segTurmas.has(s.turma)).length
+      );
+      const nAulas = state.schedules.filter(s => s.teacherId === t.id && segTurmas.has(s.turma)).length;
+      return `
+        <button class="sched-prof-btn ${isSel ? 'on' : ''}"
+          data-action="schedSelectTeacher" data-tid="${t.id}"
+          style="${isSel
+            ? `background:${cv.tg};border-color:${cv.bd};color:${cv.tx}`
+            : ''}">
+          <span class="sched-prof-dot" style="background:${cv.dt}"></span>
+          <span class="sched-prof-name">${h(t.name)}</span>
+          <span class="sched-prof-ct">${nAulas}</span>
+        </button>`;
     }).join('');
 
-  // Nenhum professor selecionado ainda
-  if (!schedUI.teacherId) {
     return `
-      <div class="card card-b" style="max-width:460px;margin-bottom:24px">
-        <div class="lbl" style="margin-bottom:8px">Professor</div>
-        <select class="inp" data-action="schedSelectTeacher" style="font-size:15px">
-          ${tOpts}
-        </select>
-      </div>
-      <div class="empty" style="max-width:500px">
-        <div class="empty-ico">📋</div>
-        <div class="empty-ttl">Selecione um professor</div>
-        <div class="empty-dsc">Os horários de aula são gerenciados individualmente por professor.</div>
-      </div>`;
-  }
-
-  const teacher = state.teachers.find(t => t.id === schedUI.teacherId);
-  const cv = colorOfTeacher(teacher);
-
-  // Tabs de segmento
-  const segTabs = state.segments.map(seg => `
-    <button class="stab ${seg.id === schedUI.segmentId ? 'on' : ''}"
-      data-action="schedSelectSegment" data-seg="${seg.id}"
-      style="font-size:13px">
-      ${h(seg.name)}
-    </button>`).join('');
-
-  const grid = schedUI.segmentId
-    ? buildScheduleGrid(
-        state.segments.find(s => s.id === schedUI.segmentId),
-        schedUI.teacherId
-      )
-    : `<div class="empty" style="max-width:440px;margin-top:16px">
-        <div class="empty-ico">🏫</div>
-        <div class="empty-ttl">Selecione o nível de ensino</div>
-        <div class="empty-dsc">Escolha Ensino Fundamental ou Ensino Médio para ver o horário.</div>
-       </div>`;
-
-  const total = state.schedules.filter(s => s.teacherId === schedUI.teacherId).length;
-
-  return `
-    <!-- Seletor de professor -->
-    <div class="card card-b" style="max-width:100%;margin-bottom:20px">
-      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-width:220px">
-          <div class="lbl">Professor</div>
-          <select class="inp" data-action="schedSelectTeacher" style="font-size:14px">
-            ${tOpts}
-          </select>
+      <div class="sched-seg-frame">
+        <div class="sched-seg-hdr">
+          <span style="font-weight:700;font-size:14px">${h(seg.name)}</span>
+          <span style="font-size:11px;color:var(--t3)">${profsSeg.length} professor${profsSeg.length !== 1 ? 'es' : ''}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="th-av" style="background:${cv.tg};color:${cv.tx};width:40px;height:40px;font-size:18px">
+        <div class="sched-prof-list">
+          ${profBtns || '<p style="font-size:12px;color:var(--t3);padding:8px 0">Nenhum professor com aulas neste nível.</p>'}
+        </div>
+      </div>`;
+  }).join('');
+
+  // ── Grade(s) do professor selecionado ────────────────────────────────────
+  let grids = '';
+  if (schedUI.teacherId) {
+    const teacher = state.teachers.find(t => t.id === schedUI.teacherId);
+    const cv      = colorOfTeacher(teacher);
+    const total   = state.schedules.filter(s => s.teacherId === schedUI.teacherId).length;
+
+    // Quais segmentos este professor tem aulas
+    const teacherSegs = state.segments.filter(seg => {
+      const segTurmas = new Set(seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`)));
+      return state.schedules.some(s => s.teacherId === schedUI.teacherId && segTurmas.has(s.turma));
+    });
+
+    const gridBlocks = state.segments.map(seg => {
+      const segTurmas = new Set(seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`)));
+      // Mostra grade para todos os segmentos (professor pode adicionar aulas em qualquer nível)
+      const grid = buildScheduleGrid(seg, schedUI.teacherId);
+      const hasAulas = state.schedules.some(s => s.teacherId === schedUI.teacherId && segTurmas.has(s.turma));
+      return `
+        <div style="margin-bottom:28px">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);
+            text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+            ${h(seg.name)}
+            ${hasAulas ? `<span style="font-weight:400;color:var(--t3);text-transform:none;
+              letter-spacing:0;margin-left:8px">
+              ${state.schedules.filter(s => s.teacherId === schedUI.teacherId && segTurmas.has(s.turma)).length} aulas
+            </span>` : ''}
+          </div>
+          ${grid}
+        </div>`;
+    }).join('');
+
+    grids = `
+      <div style="margin-top:20px;padding-top:20px;border-top:1.5px solid var(--bdr)">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+          <div class="th-av" style="background:${cv.tg};color:${cv.tx};
+            width:40px;height:40px;font-size:18px;font-weight:800;flex-shrink:0">
             ${h(teacher.name.charAt(0))}
           </div>
           <div>
-            <div style="font-weight:700;font-size:15px">${h(teacher.name)}</div>
+            <div style="font-weight:700;font-size:16px">${h(teacher.name)}</div>
             <div style="font-size:12px;color:var(--t2)">
               ${h(teacherSubjectNames(teacher) || '—')} ·
               <strong>${total}</strong> aula${total !== 1 ? 's' : ''} cadastrada${total !== 1 ? 's' : ''}
             </div>
           </div>
         </div>
-      </div>
-    </div>
+        ${gridBlocks}
+      </div>`;
+  }
 
-    <!-- Abas de segmento -->
-    <div class="s-tabs" style="margin-bottom:16px">${segTabs}</div>
-
-    <!-- Grade horária -->
-    <div id="sched-grid-container">${grid}</div>`;
+  return `
+    <!-- Dois frames lado a lado: EF e EM -->
+    <div class="sched-frames">${frames}</div>
+    ${grids}`;
 }
 
 function emptyTabGuard(msg, tab, label) {
@@ -616,47 +638,35 @@ function emptyTabGuard(msg, tab, label) {
   </div>`;
 }
 
-/**
- * Constrói o grid unificado de um segmento para um professor.
- * Linhas = todos os períodos do segmento (manhã + tarde, ordenados por horário).
- * Células mostram apenas as aulas DO professor selecionado.
- */
 function buildScheduleGrid(seg, teacherId) {
   if (!seg) return '';
 
-  // Períodos do segmento — usa o turno definido no segmento
   const segTurno = seg.turno ?? 'manha';
   const periodos = getPeriodos(seg.id, segTurno)
     .map(p => ({ ...p, turno: segTurno, slot: `${seg.id}|${segTurno}|${p.aulaIdx}` }));
 
   if (periodos.filter(p => !p.isIntervalo).length === 0) {
-    return `<div class="card card-b" style="padding:24px;color:var(--t2);text-align:center">
-      Configure os períodos deste segmento antes de cadastrar horários.
+    return `<div class="card card-b" style="padding:20px;color:var(--t2);text-align:center;font-size:13px">
+      Configure os períodos deste segmento em ⏰ Períodos.
     </div>`;
   }
 
   const headers = DAYS.map(d =>
-    `<th style="text-align:center;min-width:140px;padding:10px 8px">${d}</th>`
+    `<th style="text-align:center;min-width:130px;padding:8px 6px">${d}</th>`
   ).join('');
 
   const rows = periodos.map(periodo => {
-    if (periodo.isIntervalo) {
-      return `
-        <tr>
-          <td style="padding:5px 12px;background:var(--accent-l);border-bottom:1px solid #F6C9A8">
-            <div style="font-size:11px;font-weight:700;color:var(--accent)">☕ Intervalo</div>
-            <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace">
-              ${h(periodo.inicio)}–${h(periodo.fim)}
-            </div>
-          </td>
-          ${DAYS.map(() =>
-            `<td style="background:var(--accent-l);border-bottom:1px solid #F6C9A8"></td>`
-          ).join('')}
-        </tr>`;
-    }
+    if (periodo.isIntervalo) return `
+      <tr>
+        <td style="padding:4px 10px;background:var(--accent-l);border-bottom:1px solid #F6C9A8">
+          <div style="font-size:10px;font-weight:700;color:var(--accent)">☕ Intervalo</div>
+          <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace">
+            ${h(periodo.inicio)}–${h(periodo.fim)}</div>
+        </td>
+        ${DAYS.map(() => `<td style="background:var(--accent-l)"></td>`).join('')}
+      </tr>`;
 
     const cells = DAYS.map(day => renderSchedCell(seg.id, periodo, teacherId, day)).join('');
-
     return `
       <tr>
         <td class="sl">
@@ -670,24 +680,17 @@ function buildScheduleGrid(seg, teacherId) {
   return `
     <div class="cal-wrap">
       <table class="ctbl" style="table-layout:fixed;width:100%">
-        <thead>
-          <tr>
-            <th style="text-align:left;width:115px">Aula</th>
-            ${headers}
-          </tr>
-        </thead>
-        <tbody id="sched-tbody-${seg.id}">${rows}</tbody>
+        <thead><tr>
+          <th style="text-align:left;width:110px">Aula</th>
+          ${headers}
+        </tr></thead>
+        <tbody>${rows}</tbody>
       </table>
     </div>`;
 }
 
-/**
- * Renderiza uma única célula do grid — chamada também para atualização imediata.
- */
 export function renderSchedCell(segId, periodo, teacherId, day) {
-  const slot  = periodo.slot ?? `${segId}|${periodo.turno}|${periodo.aulaIdx}`;
-
-  // Apenas aulas DO professor neste slot/dia
+  const slot   = periodo.slot ?? `${segId}|${periodo.turno}|${periodo.aulaIdx}`;
   const minhas = state.schedules.filter(
     s => s.teacherId === teacherId && s.timeSlot === slot && s.day === day
   );
@@ -696,16 +699,13 @@ export function renderSchedCell(segId, periodo, teacherId, day) {
     const subj = state.subjects.find(x => x.id === s.subjectId);
     return `
       <div class="sched-cell-card sched-mine">
-        <div class="sched-card-name">${h(subj?.name ?? '—')}</div>
-        <div class="sched-card-info">${h(s.turma)}</div>
+        <div class="sched-card-name" style="color:var(--t1)">${h(s.turma)}</div>
+        <div class="sched-card-info" style="color:var(--t1)">${h(subj?.name ?? '—')}</div>
         <button class="sched-card-del"
           data-action="removeScheduleImmediate"
-          data-id="${s.id}"
-          data-seg="${segId}"
-          data-aula="${periodo.aulaIdx}"
-          data-turno="${periodo.turno}"
-          data-day="${h(day)}"
-          data-teacher="${teacherId}"
+          data-id="${s.id}" data-seg="${segId}"
+          data-aula="${periodo.aulaIdx}" data-turno="${periodo.turno}"
+          data-day="${h(day)}" data-teacher="${teacherId}"
           title="Remover aula">✕</button>
       </div>`;
   }).join('');
@@ -714,10 +714,8 @@ export function renderSchedCell(segId, periodo, teacherId, day) {
     <td class="sched-cell"
       id="sched-cell-${segId}-${periodo.turno}-${periodo.aulaIdx}-${day.replace(/[^a-z]/gi,'')}"
       data-action="openScheduleModal"
-      data-seg="${segId}"
-      data-turno="${periodo.turno}"
-      data-aula="${periodo.aulaIdx}"
-      data-day="${h(day)}"
+      data-seg="${segId}" data-turno="${periodo.turno}"
+      data-aula="${periodo.aulaIdx}" data-day="${h(day)}"
       data-teacher="${teacherId}">
       ${cards}
       <div class="sched-add-hint">＋ adicionar</div>
