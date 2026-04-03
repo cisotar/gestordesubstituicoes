@@ -158,10 +158,13 @@ export function renderAuthBar() {
         ${roleBadge}
       </div>
       ${isAdminRole() ? `
-        <button class="auth-btn auth-btn-sm" id="btn-pending" title="Aprovar professores">
-          👩‍🏫${pendingBadge}
-        </button>
-        <button class="auth-btn auth-btn-sm" id="btn-admins" title="Gerenciar admins">⚙</button>
+        <span class="pending-nav-badge" id="nav-pending-badge"
+          style="display:${authState.pendingCt > 0 ? 'inline-flex' : 'none'};
+          background:#EF4444;color:#fff;border-radius:10px;
+          padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer"
+          title="Professores aguardando aprovação">
+          👩‍🏫 ${authState.pendingCt}
+        </span>
       ` : ''}
       ${isTeacherRole() ? `
         <button class="auth-btn auth-btn-sm" id="btn-profile" title="Meu perfil">👤</button>
@@ -170,9 +173,14 @@ export function renderAuthBar() {
     </div>`;
 
   document.getElementById('btn-logout')  ?.addEventListener('click', logout);
-  document.getElementById('btn-admins')  ?.addEventListener('click', openAdminManager);
-  document.getElementById('btn-pending') ?.addEventListener('click', openPendingManager);
   document.getElementById('btn-profile') ?.addEventListener('click', openOwnProfile);
+  // Pending badge in nav navigates to admin settings tab
+  document.getElementById('nav-pending-badge')?.addEventListener('click', () => {
+    import('./nav.js').then(({ navigate, setSettingsTab }) => {
+      navigate('settings');
+      setSettingsTab('admin');
+    });
+  });
 }
 
 export function updateAdminUI() {
@@ -205,6 +213,17 @@ export async function openPendingManager() {
 
   const pending = await listPendingTeachers().catch(() => []);
   authState.pendingCt = pending.length;
+  // Update settings admin tab badge if visible
+  const nb = document.getElementById('nav-pending-badge');
+  if (nb) {
+    nb.style.display = authState.pendingCt > 0 ? 'inline-flex' : 'none';
+    nb.textContent = `👩‍🏫 ${authState.pendingCt}`;
+  }
+  const sb = document.getElementById('settings-pending-badge');
+  if (sb) {
+    sb.style.display = authState.pendingCt > 0 ? '' : 'none';
+    sb.textContent = authState.pendingCt;
+  }
   _updatePendingBadge();
 
   const rows = pending.map(p => `

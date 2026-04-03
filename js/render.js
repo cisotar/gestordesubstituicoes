@@ -354,7 +354,7 @@ function tabPeriods() {
     ).join('');
 
     return `
-      <div class="card card-b" style="margin-bottom:20px;max-width:560px">
+      <div class="card card-b" style="margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
           <h3>${h(seg.name)}</h3>
           <div class="fld" style="margin:0;flex-direction:row;align-items:center;gap:8px">
@@ -395,7 +395,7 @@ function tabPeriods() {
       </div>`;
   }).join('');
 
-  return `<div style="max-width:600px">${segBlocks}</div>`;
+  return `<div>${segBlocks}</div>`;
 }
 
 
@@ -441,7 +441,7 @@ function tabDisciplines() {
   }).join('');
 
   return `
-    <div style="max-width:640px">
+    <div class="tab-full-width">
       <!-- Nova área -->
       <div class="card card-b" style="margin-bottom:20px">
         <h3 style="margin-bottom:10px;font-size:14px">Nova área do conhecimento</h3>
@@ -453,7 +453,7 @@ function tabDisciplines() {
       </div>
 
       <!-- Blocos de áreas -->
-      <div id="disc-list" class="disc-list-grid">
+      <div id="disc-list" class="disc-list-grid disc-list-full">
         ${blocks || '<div class="empty"><div class="empty-ico">📚</div><div class="empty-ttl">Nenhuma área cadastrada</div><div class="empty-dsc">Adicione uma área acima para começar.</div></div>'}
       </div>
     </div>`;
@@ -489,33 +489,109 @@ function tabTeachers() {
           </div>`;
       }).join('');
 
-  return `
-    <div style="max-width:640px">
-      <div class="card card-b" style="margin-bottom:16px">
-        <h3 style="margin-bottom:6px">Cadastrar em Bloco</h3>
-        <p style="font-size:13px;color:var(--t2);margin-bottom:12px">
-          Um nome por linha. Depois use <strong>📚 Matérias</strong> para associar disciplinas.
-        </p>
-        <textarea class="inp" id="teachers-bulk" rows="5"
-          placeholder="Maria Silva&#10;João Pereira&#10;Ana Rodrigues"
-          style="resize:vertical;font-family:'DM Mono',monospace;font-size:13px"></textarea>
-        <div style="margin-top:10px;display:flex;justify-content:flex-end">
-          <button class="btn btn-dark" data-action="addTeachersBulk">Adicionar todos</button>
-        </div>
-      </div>
+  // Group teachers by segment
+  const teachersBySegment = state.segments.map(seg => {
+    const segTurmas = new Set(seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`)));
+    const segTeachers = state.teachers.filter(t =>
+      state.schedules.some(s => s.teacherId === t.id && segTurmas.has(s.turma))
+    ).sort((a, b) => a.name.localeCompare(b.name));
+    return { seg, teachers: segTeachers };
+  });
+
+  const teacherCols = teachersBySegment.map(({ seg, teachers: segTs }) => {
+    const segList = segTs.length === 0
+      ? `<p style="color:var(--t3);font-size:13px;padding:12px 0">Nenhum professor com aulas neste nível.</p>`
+      : segTs.map(t => {
+          const cv = colorOfTeacher(t);
+          const ct = state.schedules.filter(s => s.teacherId === t.id).length;
+          const subs = teacherSubjectNames(t);
+          const hasContact = t.email || t.whatsapp || t.celular;
+          return `
+            <div class="ti" style="flex-wrap:wrap;gap:8px">
+              <span class="ti-dot" style="background:${cv.dt}"></span>
+              <div style="flex:1;min-width:100px">
+                <div class="ti-name">${h(t.name)}</div>
+                ${subs ? `<div style="font-size:11px;color:var(--t3);margin-top:2px">${h(subs)}</div>` : ''}
+                ${hasContact ? `
+                  <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+                    ${t.email    ? `<span class="contact-chip">✉ ${h(t.email)}</span>`    : ''}
+                    ${t.whatsapp ? `<span class="contact-chip">💬 ${h(t.whatsapp)}</span>` : ''}
+                    ${t.celular  ? `<span class="contact-chip">📱 ${h(t.celular)}</span>`  : ''}
+                  </div>` : ''}
+              </div>
+              <span class="ti-cnt">${ct} aula${ct !== 1 ? 's' : ''}</span>
+              <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚</button>
+              <button class="btn btn-ghost btn-xs" data-action="editTeacher" data-id="${t.id}">✏️</button>
+              <button class="btn-del" data-action="removeTeacher" data-id="${t.id}">✕</button>
+            </div>`;
+        }).join('');
+
+    return `
       <div class="card card-b">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">
-            ${state.teachers.length} professor${state.teachers.length !== 1 ? 'es' : ''}
-          </div>
-          <div style="display:flex;gap:6px">
-            <input class="inp" id="t-name" placeholder="Adicionar individualmente"
-              style="width:220px" data-enter="addTeacher">
-            <button class="btn btn-dark btn-sm" data-action="addTeacher">+</button>
+        <div style="font-weight:700;font-size:14px;margin-bottom:14px;
+          padding-bottom:10px;border-bottom:1px solid var(--bdr)">
+          ${h(seg.name)}
+          <span style="font-size:12px;font-weight:400;color:var(--t3);margin-left:8px">
+            ${segTs.length} professor${segTs.length !== 1 ? 'es' : ''}
+          </span>
+        </div>
+        <div style="max-height:420px;overflow-y:auto">${segList}</div>
+      </div>`;
+  }).join('');
+
+  // Teachers without any schedule
+  const withSched = new Set(state.schedules.map(s => s.teacherId));
+  const unassigned = state.teachers.filter(t => !withSched.has(t.id))
+    .sort((a,b) => a.name.localeCompare(b.name));
+  const unassignedBlock = unassigned.length > 0 ? `
+    <div class="card card-b" style="margin-top:20px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:12px;color:var(--t2)">
+        Sem horários cadastrados (${unassigned.length})
+      </div>
+      ${unassigned.map(t => {
+        const cv = colorOfTeacher(t);
+        const subs = teacherSubjectNames(t);
+        return `
+          <div class="ti">
+            <span class="ti-dot" style="background:${cv.dt}"></span>
+            <div style="flex:1;min-width:100px">
+              <div class="ti-name">${h(t.name)}</div>
+              ${subs ? `<div style="font-size:11px;color:var(--t3)">${h(subs)}</div>` : ''}
+            </div>
+            <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚</button>
+            <button class="btn btn-ghost btn-xs" data-action="editTeacher" data-id="${t.id}">✏️</button>
+            <button class="btn-del" data-action="removeTeacher" data-id="${t.id}">✕</button>
+          </div>`;
+      }).join('')}
+    </div>` : '';
+
+  return `
+    <div class="tab-full-width">
+      <!-- Cadastro -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="card card-b">
+          <h3 style="margin-bottom:6px">Cadastrar em Bloco</h3>
+          <p style="font-size:13px;color:var(--t2);margin-bottom:12px">
+            Um nome por linha. Depois use 📚 para associar disciplinas.
+          </p>
+          <textarea class="inp" id="teachers-bulk" rows="4"
+            placeholder="Maria Silva&#10;João Pereira&#10;Ana Rodrigues"
+            style="resize:vertical;font-family:'DM Mono',monospace;font-size:13px"></textarea>
+          <div style="margin-top:10px;display:flex;justify-content:flex-end">
+            <button class="btn btn-dark" data-action="addTeachersBulk">Adicionar todos</button>
           </div>
         </div>
-        <div style="max-height:440px;overflow-y:auto">${list}</div>
+        <div class="card card-b" style="display:flex;flex-direction:column;justify-content:center">
+          <h3 style="margin-bottom:10px">Adicionar individualmente</h3>
+          <div style="display:flex;gap:8px">
+            <input class="inp" id="t-name" placeholder="Nome do professor" style="flex:1" data-enter="addTeacher">
+            <button class="btn btn-dark" data-action="addTeacher">+</button>
+          </div>
+        </div>
       </div>
+      <!-- Dois blocos por segmento -->
+      <div class="seg-cards-grid">${teacherCols}</div>
+      ${unassignedBlock}
     </div>`;
 }
 
@@ -627,6 +703,35 @@ function tabSchedules() {
     <!-- Dois frames lado a lado: EF e EM -->
     <div class="sched-frames">${frames}</div>
     ${grids}`;
+}
+
+function tabAdmin() {
+  return `
+    <div class="tab-full-width">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:800px">
+        <div class="card card-b">
+          <h3 style="margin-bottom:8px">👩‍🏫 Aprovar Professores</h3>
+          <p style="font-size:13px;color:var(--t2);margin-bottom:16px">
+            Professores que solicitaram acesso ao sistema aguardando aprovação.
+          </p>
+          <button class="btn btn-dark" id="settings-btn-pending">
+            Gerenciar solicitações
+            <span id="settings-pending-badge" style="display:none;margin-left:6px;
+              background:#EF4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px">
+            </span>
+          </button>
+        </div>
+        <div class="card card-b">
+          <h3 style="margin-bottom:8px">⚙️ Gerenciar Administradores</h3>
+          <p style="font-size:13px;color:var(--t2);margin-bottom:16px">
+            Adicione ou remova administradores do sistema.
+          </p>
+          <button class="btn btn-dark" id="settings-btn-admins">
+            Gerenciar administradores
+          </button>
+        </div>
+      </div>
+    </div>`;
 }
 
 function emptyTabGuard(msg, tab, label) {

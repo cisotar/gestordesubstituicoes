@@ -1580,3 +1580,47 @@ button.nav-logo span  { font-weight: 800; color: #fff; }
 .toast-warn  { background: #92400E; color: #fff; }
 .toast-err   { background: #9B1C1C; color: #fff; }
 .toast-local { background: #1E3A8A; color: #fff; }
+
+/* ═══ LAYOUT GERAL — CENTRALIZAÇÃO E LARGURA PLENA ══════════════════════════ */
+
+/* Wrapper de conteúdo das abas: usa toda a largura disponível */
+.tab-full-width {
+  width: 100%;
+}
+
+/* Grade de períodos lado a lado */
+.periods-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+}
+@media (max-width: 900px) {
+  .periods-grid { grid-template-columns: 1fr; }
+}
+
+/* Disciplinas: colunas largas */
+.disc-list-full {
+  width: 100%;
+}
+.disc-list-grid {
+  width: 100%;
+}
+
+/* Home: centraliza o hero e os botões de segmento */
+.home-hero {
+  max-width: 100%;
+}
+
+/* Segmentos: remove max-width artificial */
+.seg-cards-grid {
+  max-width: 100%;
+}
+
+/* Garante que o conteúdo das abas não fique preso à esquerda */
+#settings-out > * {
+  width: 100%;
+}
+
+/* Home: hero + botões centralizados */
+#pg-calendar .ph { display: none; }
