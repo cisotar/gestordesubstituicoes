@@ -60,12 +60,13 @@ export const state = {
 };
 
 /**
- * saveState e loadState são mantidos como aliases para compatibilidade
- * com o restante do código. A persistência real é feita via db.js.
+ * saveState — persiste no Firestore em background (fire-and-forget).
+ * Não bloqueia a UI. Erros são logados silenciosamente.
  */
-export async function saveState() {
-  const { saveToFirestore } = await import('./db.js');
-  await saveToFirestore();
+export function saveState() {
+  import('./db.js').then(({ saveToFirestore }) => {
+    saveToFirestore().catch(e => console.warn('[state] Falha ao salvar:', e));
+  });
 }
 
 export function loadState() {
