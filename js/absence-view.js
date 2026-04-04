@@ -157,42 +157,38 @@ function _selectAllBtn(groupKey) {
 // ═══ VISUALIZAÇÃO POR PROFESSOR ══════════════════════════════════════════════
 
 function _viewByTeacher() {
-  const allTeachers = state.teachers
-    .slice()
+  // Apenas professores com ausências registadas
+  const teachersWithAbs = state.teachers
+    .filter(t => (state.absences ?? []).some(ab => ab.teacherId === t.id && ab.slots.length > 0))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const teacherBtns = allTeachers.map(t => {
+  const teacherBtns = teachersWithAbs.map(t => {
     const cv      = colorOfTeacher(t);
     const absCount = (state.absences ?? [])
       .filter(ab => ab.teacherId === t.id)
       .reduce((acc, ab) => acc + ab.slots.length, 0);
-    const isSel   = t.id === absView.teacherId;
-    const hasAbs  = absCount > 0;
+    const isSel = t.id === absView.teacherId;
 
     return `
-      <button class="home-teacher-card ${isSel ? 'selected' : ''} ${!hasAbs ? 'home-teacher-empty' : ''}"
+      <button class="home-teacher-card ${isSel ? 'selected' : ''}"
         data-ab-action="selectTeacher" data-tid="${t.id}"
-        style="${isSel ? `border-color:var(--navy)` : hasAbs ? `border-color:${cv.bd}` : ''}">
-        <div class="home-teacher-av"
-          style="background:${hasAbs ? cv.tg : 'var(--surf2)'};
-                 color:${hasAbs ? cv.tx : 'var(--t3)'}">
+        style="${isSel ? `border-color:var(--navy)` : `border-color:${cv.bd}`}">
+        <div class="home-teacher-av" style="background:${cv.tg};color:${cv.tx}">
           ${h(t.name.charAt(0))}
         </div>
         <div style="flex:1;min-width:0;text-align:left">
-          <div style="font-weight:700;font-size:14px;
-            color:${hasAbs ? 'var(--t1)' : 'var(--t3)'};
+          <div style="font-weight:700;font-size:14px;color:var(--t1);
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
             ${h(t.name)}
           </div>
-          <div style="font-size:11px;color:var(--t3);margin-top:2px">
-            ${hasAbs ? `${absCount} aula${absCount !== 1 ? 's' : ''} ausente${absCount !== 1 ? 's' : ''}` : 'Sem faltas registradas'}
+          <div style="font-size:11px;color:var(--t2);margin-top:2px">
+            ${absCount} aula${absCount !== 1 ? 's' : ''} ausente${absCount !== 1 ? 's' : ''}
           </div>
         </div>
-        ${hasAbs ? `
-          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
-            background:${cv.tg};color:${cv.tx};flex-shrink:0">
-            ${absCount}
-          </span>` : ''}
+        <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
+          background:${cv.tg};color:${cv.tx};flex-shrink:0">
+          ${absCount}
+        </span>
       </button>`;
   }).join('');
 
@@ -205,15 +201,15 @@ function _viewByTeacher() {
 
   return `
     <div class="home-main-grid">
-      <!-- Lista de professores -->
+      <!-- Lista de professores com ausências -->
       <div>
         <div style="font-size:11px;font-weight:700;color:var(--t2);
           text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
-          ${allTeachers.length} professor${allTeachers.length !== 1 ? 'es' : ''}
+          ${teachersWithAbs.length} professor${teachersWithAbs.length !== 1 ? 'es' : ''} com ausências
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;
           max-height:70vh;overflow-y:auto;padding-right:4px">
-          ${teacherBtns || '<p style="color:var(--t2);font-size:13px">Nenhum professor cadastrado.</p>'}
+          ${teacherBtns || '<div class="empty"><div class="empty-ico">✅</div><div class="empty-ttl">Sem ausências registadas</div><div class="empty-dsc">Nenhuma falta no sistema.</div></div>'}
         </div>
       </div>
       <!-- Detalhe -->
