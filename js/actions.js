@@ -200,6 +200,32 @@ export function removeTeacher(id) {
   saveState(`Professor '${tName}' removido`); updateNav(); renderSettings();
 }
 
+export function clearAllTeachers() {
+  const n = state.teachers.length;
+  if (n === 0) return;
+  if (!confirm(`Remover todos os ${n} professores e seus horários e ausências associados? Esta ação não pode ser desfeita.`)) return;
+
+  const teacherIds  = state.teachers.map(t => t.id);
+  const scheduleIds = state.schedules.map(s => s.id);
+  const absenceIds  = (state.absences ?? []).map(a => a.id);
+
+  state.teachers  = [];
+  state.schedules = [];
+  state.absences  = [];
+  state.subs      = {};
+
+  // Apaga do Firestore
+  import('./db.js').then(({ deleteDocById }) => {
+    teacherIds.forEach(id  => deleteDocById('teachers',  id));
+    scheduleIds.forEach(id => deleteDocById('schedules', id));
+    absenceIds.forEach(id  => deleteDocById('absences',  id));
+  });
+
+  saveState('Todos os professores removidos');
+  updateNav();
+  renderSettings();
+}
+
 export function saveTeacherSubjects(teacherId, subjectIds) {
   const teacher = state.teachers.find(t => t.id === teacherId);
   if (!teacher) return;

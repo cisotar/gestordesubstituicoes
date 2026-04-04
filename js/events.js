@@ -14,7 +14,7 @@ import {
   removeScheduleImmediate,
 } from './modal-schedule.js';
 import {
-  addTeacher, addTeachersBulk, removeTeacher,
+  addTeacher, addTeachersBulk, removeTeacher, clearAllTeachers,
   addAreasBulk, removeArea,
   addSubjectsBulk, removeSubject,
   addSegment, removeSegment, addGrade, removeGrade,
@@ -149,6 +149,7 @@ const ACTION_MAP = {
   addTeacher:          ()  => addTeacher(),
   addTeachersBulk:     ()  => { const n = addTeachersBulk(v('teachers-bulk')); if (n) { const el = document.getElementById('teachers-bulk'); if (el) el.value = ''; } },
   removeTeacher:       el  => removeTeacher(el.dataset.id),
+  clearAllTeachers:    ()  => clearAllTeachers(),
   editTeacherSubjects: el  => openTeacherSubjects(el.dataset.id),
   saveTeacherSubjects: el  => saveTeacherSubjectsFromModal(el.dataset.id),
   editTeacher:         el  => openEditTeacher(el.dataset.id),

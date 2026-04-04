@@ -568,9 +568,11 @@ function tabTeachers() {
   return `
     <div class="tab-full-width">
       <!-- Botões de cadastro -->
-      <div style="display:flex;gap:8px;margin-bottom:20px">
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
         <button class="btn btn-dark" data-action="openAddTeacher">+ Adicionar Professor</button>
         <button class="btn btn-ghost" data-action="openAddTeachersBulk">Adicionar em Bloco</button>
+        ${state.teachers.length > 0 ? `<button class="btn btn-ghost" style="color:var(--err);margin-left:auto"
+          data-action="clearAllTeachers">🗑 Limpar registros</button>` : ''}
       </div>
       <!-- Dois blocos por segmento -->
       <div class="seg-cards-grid">${teacherCols}</div>
