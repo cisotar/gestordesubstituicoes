@@ -73,70 +73,66 @@ export function renderHome() {
     <div id="home-week-grid">${weekGrid}</div>`;
 }
 
-// ─── Lista de professores ─────────────────────────────────────────────────────
+// ─── Frame de professores por segmento ───────────────────────────────────────
 
-function _renderTeacherList(seg) {
+function _renderSegFrame(seg, todayLabel) {
   if (!seg) return '';
 
-  const segTurmas = new Set(
-    seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`))
-  );
+  const segPrefix = seg.id + '|';
 
-  // Mostra só professores com aulas neste segmento
-  // (professores sem aulas no segmento são omitidos)
+  // Professores com aulas neste segmento (teachers sem nenhum horário são omitidos)
   const teachers = state.teachers
+    .filter(t => state.schedules.some(s => s.teacherId === t.id && s.timeSlot?.startsWith(segPrefix)))
     .map(t => {
-      const inSeg = state.schedules.filter(s => s.teacherId === t.id && segTurmas.has(s.turma));
-      return { teacher: t, inSeg };
+      const inSeg = state.schedules.filter(s => s.teacherId === t.id && s.timeSlot?.startsWith(segPrefix));
+      // Tem aula hoje neste segmento?
+      const hasToday = todayLabel
+        ? inSeg.some(s => s.day === todayLabel)
+        : false;
+      return { teacher: t, inSeg, hasToday };
     })
-    .filter(({ inSeg }) => inSeg.length > 0)
-    .sort((a, b) => a.teacher.name.localeCompare(b.teacher.name));
+    // Ordem: primeiro quem tem aula hoje, depois alfabético
+    .sort((a, b) => {
+      if (a.hasToday !== b.hasToday) return a.hasToday ? -1 : 1;
+      return a.teacher.name.localeCompare(b.teacher.name);
+    });
 
-  const cards = teachers.map(({ teacher: t, inSeg }) => {
-    const cv      = colorOfTeacher(t);
-    const isEmpty = inSeg.length === 0;
-    const subs    = teacherSubjectNames(t);
-    const isSel   = t.id === homeUI.teacherId;
+  const cards = teachers.map(({ teacher: t, inSeg, hasToday }) => {
+    const cv   = colorOfTeacher(t);
+    const subs = teacherSubjectNames(t);
+    const isSel = t.id === homeUI.teacherId;
 
     return `
-      <button class="home-teacher-card ${isEmpty ? 'home-teacher-empty' : ''} ${isSel ? 'selected' : ''}"
-        data-home-action="selectTeacher" data-tid="${t.id}"
-        style="${!isEmpty ? `border-color:${isSel ? 'var(--navy)' : cv.bd}` : ''}">
-        <div class="home-teacher-av"
-          style="background:${isEmpty ? 'var(--surf2)' : cv.tg};color:${isEmpty ? 'var(--t3)' : cv.tx}">
+      <button class="home-teacher-card ${isSel ? 'selected' : ''} ${hasToday ? 'home-teacher-today' : ''}"
+        data-home-action="selectTeacher" data-tid="${t.id}" data-seg="${seg.id}"
+        style="border-color:${isSel ? 'var(--navy)' : cv.bd}">
+        <div class="home-teacher-av" style="background:${cv.tg};color:${cv.tx}">
           ${h(t.name.charAt(0))}
         </div>
         <div style="flex:1;min-width:0;text-align:left">
-          <div style="font-weight:700;font-size:14px;color:${isEmpty ? 'var(--t3)' : 'var(--t1)'};
+          <div style="font-weight:700;font-size:14px;color:var(--t1);
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(t.name)}</div>
           <div style="font-size:11px;color:var(--t3);margin-top:2px;
             white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            ${isEmpty ? '— sem aulas neste nível —' : h(subs || '—')}
+            ${h(subs || '—')}
           </div>
         </div>
-        ${!isEmpty
-          ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
-              background:${cv.tg};color:${cv.tx};flex-shrink:0">
-              ${inSeg.length} aula${inSeg.length !== 1 ? 's' : ''}
-            </span>`
-          : `<span style="font-size:11px;color:var(--t3);flex-shrink:0">Vazio</span>`}
+        <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
+          background:${cv.tg};color:${cv.tx};flex-shrink:0">
+          ${inSeg.length} aula${inSeg.length !== 1 ? 's' : ''}
+        </span>
       </button>`;
   }).join('');
 
-  const weekGrid = homeUI.teacherId ? _renderWeekGrid(homeUI.teacherId, seg) : '';
-
   return `
-    <div class="home-main-grid">
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--t3);
-          text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
-          ${teachers.length} professor${teachers.length !== 1 ? 'es' : ''}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow-y:auto;padding-right:4px">
-          ${cards}
-        </div>
+    <div class="home-seg-frame">
+      <div class="home-seg-frame-hdr">
+        <span style="font-weight:700;font-size:14px">${h(seg.name)}</span>
+        <span style="font-size:11px;color:var(--t3)">${teachers.length} professor${teachers.length !== 1 ? 'es' : ''}</span>
       </div>
-      <div id="home-week-grid">${weekGrid}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto;padding-right:4px">
+        ${cards || '<p style="font-size:12px;color:var(--t3);padding:8px 0">Nenhum professor com aulas neste nível.</p>'}
+      </div>
     </div>`;
 }
 
@@ -911,15 +907,9 @@ export function handleHomeAction(action, el) {
       break;
     }
 
-    case 'selectSeg': {
-      homeUI.segmentId = el.dataset.seg;
-      homeUI.teacherId = null;
-      renderHome();
-      break;
-    }
-
     case 'selectTeacher': {
       homeUI.teacherId  = el.dataset.tid;
+      homeUI.segmentId  = el.dataset.seg;
       homeUI.weekOffset = 0;
       const gridEl = document.getElementById('home-week-grid');
       if (gridEl) {

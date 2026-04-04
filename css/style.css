@@ -1197,24 +1197,31 @@ code {
 
 /* ═══ HOME PAGE ══════════════════════════════════════════════════════════════ */
 
-/* Tabs de segmento na home */
-.home-seg-tab {
-  padding: 10px 24px;
-  border-radius: var(--r);
-  border: 2px solid var(--bdr);
-  background: var(--surf);
-  font-family: 'Figtree', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--t2);
-  cursor: pointer;
-  transition: all .15s;
+/* Frames EF/EM lado a lado na home */
+.home-seg-frames {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
 }
-.home-seg-tab:hover { border-color: var(--bdr2); color: var(--t1); }
-.home-seg-tab.on {
-  background: var(--navy);
-  border-color: var(--navy);
-  color: #fff;
+.home-seg-frame {
+  background: var(--surf);
+  border: 1.5px solid var(--bdr);
+  border-radius: var(--rl);
+  padding: 14px 14px 16px;
+}
+.home-seg-frame-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--bdr);
+}
+/* Card com aula hoje: leve destaque */
+.home-teacher-card.home-teacher-today {
+  background: var(--accent-l);
+  border-color: var(--accent);
 }
 
 /* Cards de professor na lista */
