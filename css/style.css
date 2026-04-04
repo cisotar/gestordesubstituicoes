@@ -694,11 +694,11 @@ code {
 
 /* ═══ SEGMENTS (nova estrutura por-série) ════════════════════════════════════ */
 .seg-card        { margin-bottom: 16px; }
-.seg-card-hdr    { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+.seg-card-hdr    { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
 .seg-title       { font-size: 16px; font-weight: 700; }
 .seg-meta        { font-size: 12px; color: var(--t3); margin-top: 3px; }
 
-.grade-list      { display: flex; flex-direction: column; gap: 0; margin-bottom: 20px; }
+.grade-list      { display: flex; flex-direction: column; gap: 0; margin-bottom: 12px; }
 
 .grade-row {
   border: 1px solid var(--bdr);
@@ -732,9 +732,11 @@ code {
 .no-grades       { font-size: 13px; color: var(--t3); padding: 8px 0; }
 
 .add-grade-row {
-  padding-top: 16px;
+  padding-top: 12px;
+  padding-bottom: 12px;
   border-top: 1px solid var(--bdr);
-  margin-bottom: 0;
+  border-bottom: 1px solid var(--bdr);
+  margin-bottom: 12px;
 }
 
 .turmas-preview {

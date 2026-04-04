@@ -285,7 +285,7 @@ function tabSegments() {
           <button class="btn-del" data-action="removeSegment" data-id="${seg.id}">✕</button>
         </div>
         <div class="add-grade-row">
-          <div class="lbl" style="margin-bottom:6px">Adicionar série / ano</div>
+          <div class="lbl" style="margin-bottom:8px">Adicionar série / ano</div>
           <div style="display:flex;gap:8px">
             <input class="inp" id="grade-inp-${seg.id}" placeholder="Ex: 5º Ano, 4ª Série…" style="flex:1">
             <button class="btn btn-dark" data-action="addGrade" data-seg="${seg.id}">Adicionar</button>
