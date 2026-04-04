@@ -316,24 +316,16 @@ export function openEditTeacher(id) {
       </div>
 
       <div class="fld">
+        <label class="lbl">Telefone</label>
+        <input class="inp" id="edit-t-celular" type="tel"
+          value="${h(teacher.celular ?? teacher.whatsapp ?? '')}"
+          placeholder="(11) 99999-9999">
+      </div>
+      <div class="fld">
         <label class="lbl">E-mail</label>
         <input class="inp" id="edit-t-email" type="email"
           value="${h(teacher.email ?? '')}"
           placeholder="professor@escola.edu.br">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="fld">
-          <label class="lbl">WhatsApp</label>
-          <input class="inp" id="edit-t-whatsapp" type="tel"
-            value="${h(teacher.whatsapp ?? '')}"
-            placeholder="(11) 99999-9999">
-        </div>
-        <div class="fld">
-          <label class="lbl">Celular</label>
-          <input class="inp" id="edit-t-celular" type="tel"
-            value="${h(teacher.celular ?? '')}"
-            placeholder="(11) 99999-9999">
-        </div>
       </div>
     </div>
 
@@ -347,10 +339,9 @@ export function openEditTeacher(id) {
 }
 
 export function saveEditTeacher(id) {
-  const name     = document.getElementById('edit-t-name')?.value?.trim();
-  const email    = document.getElementById('edit-t-email')?.value?.trim()    ?? '';
-  const whatsapp = document.getElementById('edit-t-whatsapp')?.value?.trim() ?? '';
-  const celular  = document.getElementById('edit-t-celular')?.value?.trim()  ?? '';
+  const name    = document.getElementById('edit-t-name')?.value?.trim();
+  const email   = document.getElementById('edit-t-email')?.value?.trim()   ?? '';
+  const celular = document.getElementById('edit-t-celular')?.value?.trim() ?? '';
 
   if (!name) { document.getElementById('edit-t-name')?.focus(); return; }
 
@@ -358,8 +349,8 @@ export function saveEditTeacher(id) {
   if (teacher) {
     teacher.name     = name;
     teacher.email    = email;
-    teacher.whatsapp = whatsapp;
     teacher.celular  = celular;
+    teacher.whatsapp = celular; // mantém compatibilidade com campo legado
   }
 
   // Atualiza snapshots no histórico

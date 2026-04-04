@@ -479,6 +479,7 @@ function tabTeachers() {
               </div>
             </div>
             <span class="ti-cnt">${ct} aula${ct !== 1 ? 's' : ''}</span>
+            <button class="btn btn-ghost btn-xs" data-action="openTeacherSchedule" data-id="${t.id}" title="Editar horário">📅</button>
             <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚 Matérias</button>
             <button class="btn btn-ghost btn-xs" data-action="editTeacher" data-id="${t.id}">✏️</button>
             <button class="btn-del" data-action="removeTeacher" data-id="${t.id}">✕</button>
@@ -513,6 +514,7 @@ function tabTeachers() {
                 </div>
               </div>
               <span class="ti-cnt">${ct} aula${ct !== 1 ? 's' : ''}</span>
+              <button class="btn btn-ghost btn-xs" data-action="openTeacherSchedule" data-id="${t.id}" title="Editar horário">📅</button>
               <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚</button>
               <button class="btn btn-ghost btn-xs" data-action="editTeacher" data-id="${t.id}">✏️</button>
               <button class="btn-del" data-action="removeTeacher" data-id="${t.id}">✕</button>
@@ -555,6 +557,7 @@ function tabTeachers() {
                 ${t.email   ? `<span class="contact-chip">✉ ${h(t.email)}</span>`   : ''}
               </div>
             </div>
+            <button class="btn btn-ghost btn-xs" data-action="openTeacherSchedule" data-id="${t.id}" title="Editar horário">📅</button>
             <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚</button>
             <button class="btn btn-ghost btn-xs" data-action="editTeacher" data-id="${t.id}">✏️</button>
             <button class="btn-del" data-action="removeTeacher" data-id="${t.id}">✕</button>
@@ -592,9 +595,8 @@ function tabSchedules() {
     const segTurmas = new Set(
       seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`))
     );
-    const profsSeg = state.teachers.filter(t =>
-      state.schedules.some(s => s.teacherId === t.id && segTurmas.has(s.turma))
-    ).sort((a, b) => a.name.localeCompare(b.name));
+    // Mostra TODOS os professores — incluindo os sem horário cadastrado ainda
+    const profsSeg = state.teachers.slice().sort((a, b) => a.name.localeCompare(b.name));
 
     const profBtns = profsSeg.map(t => {
       const cv    = colorOfTeacher(t);

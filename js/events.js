@@ -1,4 +1,4 @@
-import { navigate, setSettingsTab }   from './nav.js';
+import { navigate, setSettingsTab } from './nav.js';
 import {
   openModal, closeModal,
   assignSubstitute, clearSubstitute,
@@ -155,6 +155,11 @@ const ACTION_MAP = {
   saveEditTeacher:     el  => saveEditTeacher(el.dataset.id),
 
   // Horários — grid por professor
+  openTeacherSchedule: el => {
+    schedUI.teacherId = el.dataset.id;
+    navigate('settings');
+    setSettingsTab('schedules');
+  },
   schedSelectTeacher:       el  => { schedUI.teacherId = el.dataset.tid || el.value || null; renderSettings(); },
   openScheduleModal:        el  => openScheduleModal(el.dataset.seg, el.dataset.turno, Number(el.dataset.aula), el.dataset.day, el.dataset.teacher),
   saveScheduleModal:        el  => saveScheduleModal(el.dataset.seg, el.dataset.turno, Number(el.dataset.aula), el.dataset.day, el.dataset.teacher),
