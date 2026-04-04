@@ -176,9 +176,13 @@ const ACTION_MAP = {
   clearSub:     el  => clearSubstitute(el.dataset.tid, el.dataset.day, el.dataset.slot),
 
   // Histórico / relatório
-  deleteHistory: el => { deleteHistoryEntry(el.dataset.id); renderDashboard(); },
-  printReport:   ()  => printReport(),
-  exportPDF:     ()  => exportPDF(),
+  deleteHistory:  el => { deleteHistoryEntry(el.dataset.id); renderDashboard(); },
+  printReport:    ()  => printReport(),
+  exportPDF:      ()  => exportPDF(),
+
+  // Navegação a partir do Dashboard
+  navToTeachers:  ()  => { navigate('settings'); setSettingsTab('teachers'); },
+  navToSchedules: ()  => { navigate('settings'); setSettingsTab('schedules'); },
 };
 
 // ─── Registro ────────────────────────────────────────────────────────────────

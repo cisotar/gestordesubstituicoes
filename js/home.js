@@ -829,61 +829,9 @@ function _openSubPickerFull(btn, date, teacherId) {
 // ─── PDF ──────────────────────────────────────────────────────────────────────
 
 function _downloadDayPDF(date, teacherId) {
-  const teacher  = state.teachers.find(t => t.id === teacherId);
-  const dayLabel = dateToDayLabel(date);
-  const mine     = state.schedules.filter(s => s.teacherId === teacherId && s.day === dayLabel)
-                     .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
-
-  const absenceMap = {};
-  (state.absences ?? []).forEach(ab => {
-    if (ab.teacherId !== teacherId) return;
-    ab.slots.filter(sl => sl.date === date).forEach(sl => {
-      absenceMap[sl.timeSlot] = sl;
-    });
+  import('./absence-reports.js').then(({ generateDayHTML, openPDF }) => {
+    openPDF(generateDayHTML(date, teacherId));
   });
-
-  const rows = mine.map(s => {
-    const abs  = absenceMap[s.timeSlot];
-    const subj = state.subjects.find(x => x.id === s.subjectId);
-    const subT = abs?.substituteId ? state.teachers.find(t => t.id === abs.substituteId) : null;
-    const parts = s.timeSlot.split('|');
-    const aula  = getAulas(parts[0], parts[1]).find(p => p.aulaIdx === Number(parts[2]));
-    return `<tr>
-      <td>${h(aula?.label ?? s.timeSlot)}</td>
-      <td>${h(aula ? `${aula.inicio}–${aula.fim}` : '—')}</td>
-      <td>${h(subj?.name ?? '—')}</td>
-      <td>${h(s.turma)}</td>
-      <td style="font-weight:700;color:${subT ? '#065F46' : '#C8290A'}">${h(subT?.name ?? '—')}</td>
-    </tr>`;
-  }).join('');
-
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-    <title>Substituição — ${teacher?.name} — ${formatBR(date)}</title>
-    <style>
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:'Segoe UI',sans-serif;font-size:13px;color:#1a1814;padding:32px}
-      h1{font-size:20px;font-weight:800;margin-bottom:4px}
-      .sub{font-size:12px;color:#6b6760;margin-bottom:24px}
-      table{width:100%;border-collapse:collapse}
-      th{background:#1a1814;color:#fff;padding:10px 14px;text-align:left;font-size:11px;
-         text-transform:uppercase;letter-spacing:.05em}
-      td{padding:10px 14px;border-bottom:1px solid #e0ddd6;font-size:13px}
-      tr:nth-child(even) td{background:#f4f2ee}
-      @media print{body{padding:0}}
-    </style></head><body>
-    <h1>${h(teacher?.name ?? '—')}</h1>
-    <div class="sub">
-      Relatório de substituição · ${dayLabel}, ${formatBR(date)} ·
-      Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}
-    </div>
-    <table>
-      <thead><tr><th>Aula</th><th>Horário</th><th>Matéria</th><th>Turma</th><th>Substituto</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </body></html>`);
-  win.document.close();
-  setTimeout(() => win.print(), 400);
 }
 
 // ─── DOM helpers ──────────────────────────────────────────────────────────────

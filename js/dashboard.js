@@ -32,10 +32,10 @@ export function renderDashboard() {
     ${overloaded.length > 0 ? renderAlerts(overloaded) : ''}
 
     <div class="stat-grid">
-      ${statCard('👩‍🏫', 'Professores',       state.teachers.length,  '')}
-      ${statCard('📚', 'Aulas / semana',     state.schedules.length, '')}
-      ${statCard('📋', 'Subs. no histórico', totalSubs,              '')}
-      ${statCard('⚠️', 'Subs. ativas',       activeSubs,             activeSubs > 0 ? 'warn' : '')}
+      ${statCard('👩‍🏫', 'Professores',       state.teachers.length,  '',        'navToTeachers')}
+      ${statCard('📚', 'Aulas / semana',     state.schedules.length, '',        'navToSchedules')}
+      ${statCard('📋', 'Subs. no histórico', totalSubs,              '',        'nav'           , 'absences')}
+      ${statCard('⚠️', 'Subs. ativas',       activeSubs,             activeSubs > 0 ? 'warn' : '', 'nav', 'absences')}
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
@@ -50,15 +50,20 @@ export function renderDashboard() {
 
 // ─── Helpers de renderização ──────────────────────────────────────────────────
 
-function statCard(icon, label, value, variant) {
+function statCard(icon, label, value, variant, action = '', page = '') {
   const bg    = variant === 'warn' ? 'var(--err-l)' : 'var(--surf)';
   const color = variant === 'warn' ? '#7F1A06'      : 'var(--t1)';
+  const dataAttrs = action
+    ? `data-action="${action}"${page ? ` data-page="${page}"` : ''}`
+    : '';
   return `
-    <div class="card card-b stat-card" style="background:${bg}">
+    <button class="card card-b stat-card" style="background:${bg};cursor:pointer;
+      text-align:center;font-family:'Figtree',sans-serif;border:none;width:100%"
+      ${dataAttrs}>
       <div class="stat-icon">${icon}</div>
       <div class="stat-value" style="color:${color}">${value}</div>
       <div class="stat-label" style="color:${variant === 'warn' ? '#7F1A06' : 'var(--t2)'}">${label}</div>
-    </div>`;
+    </button>`;
 }
 
 function renderAlerts(overloaded) {

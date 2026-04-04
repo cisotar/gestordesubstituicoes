@@ -18,6 +18,12 @@ import { formatBR,
          formatISO,
          parseDate,
          deleteAbsenceSlot } from './absences.js';
+import {
+  generateDayHTML, generateTeacherHTML, generateWeekHTML,
+  generateMonthHTML, generateFullHTML, openPDF,
+  buildWppTextDay, buildWppTextTeacher, buildWppTextWeek,
+  buildWppTextMonth, openWhatsApp,
+} from './absence-reports.js';
 import { getAulas,
          slotLabel }        from './periods.js';
 import { isAdminRole }      from './auth.js';
@@ -28,11 +34,12 @@ import { updateNav }        from './nav.js';
 // ─── UI state ─────────────────────────────────────────────────────────────────
 
 export const absView = {
-  mode:       'teacher', // 'teacher' | 'day' | 'week' | 'month'
-  teacherId:  null,
-  date:       null,
-  weekDate:   null,  // reference date for week view (defaults to today)
-  monthDate:  null,  // reference date for month view (defaults to today)
+  mode:            'teacher', // 'teacher' | 'day' | 'week' | 'month'
+  teacherId:       null,
+  date:            null,
+  weekDate:        null,  // reference date for week view (defaults to today)
+  monthDate:       null,  // reference date for month view (defaults to today)
+  whatsappNumber:  localStorage.getItem('wpp_number') ?? '',
 };
 
 export function resetAbsenceUI() {
@@ -49,7 +56,15 @@ export function renderAbsencePage() {
   if (!el) return;
 
   const modeTabs = `
-    <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--t3)">📱</span>
+      <input id="wpp-number" class="inp" type="tel"
+        placeholder="DDD + número" data-ab-action="saveWppNumber"
+        style="width:160px;padding:5px 10px;font-size:12px"
+        value="${h(absView.whatsappNumber)}">
+      <span style="font-size:11px;color:var(--t3)">número WhatsApp para disparo</span>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
       <button class="view-tab ${absView.mode === 'teacher' ? 'on' : ''}"
         data-ab-action="setMode" data-mode="teacher">👤 Por Professor</button>
       <button class="view-tab ${absView.mode === 'day' ? 'on' : ''}"
@@ -58,6 +73,8 @@ export function renderAbsencePage() {
         data-ab-action="setMode" data-mode="week">🗓 Por Semana</button>
       <button class="view-tab ${absView.mode === 'month' ? 'on' : ''}"
         data-ab-action="setMode" data-mode="month">📆 Por Mês</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto"
+        data-ab-action="downloadFullPDF">📄 Relatório Geral</button>
     </div>`;
 
   let content = '';
@@ -277,16 +294,23 @@ function _teacherAbsDetail(teacherId) {
 
   return `
     <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;
-      border-radius:var(--rl);background:${cv.bg};border:2px solid ${cv.bd};margin-bottom:20px">
+      border-radius:var(--rl);background:${cv.bg};border:2px solid ${cv.bd};
+      margin-bottom:20px;flex-wrap:wrap">
       <div class="th-av" style="background:${cv.tg};color:${cv.tx};
         width:44px;height:44px;font-size:20px;font-weight:800;flex-shrink:0">
         ${h(teacher.name.charAt(0))}
       </div>
-      <div>
+      <div style="flex:1;min-width:120px">
         <div style="font-weight:700;font-size:16px;color:${cv.tx}">${h(teacher.name)}</div>
         <div style="font-size:12px;color:${cv.tx};opacity:.7">
           ${h(teacherSubjectNames(teacher) || '—')}
         </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" data-ab-action="downloadTeacherPDF"
+          data-tid="${teacher.id}">📄 PDF</button>
+        <button class="btn btn-ghost btn-sm" data-ab-action="shareWppTeacher"
+          data-tid="${teacher.id}">📱 WhatsApp</button>
       </div>
     </div>
     ${dateBlocks}`;
@@ -384,14 +408,18 @@ function _viewByDay() {
 
   return `${dateSelect}
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;
-      padding:12px 16px;border-radius:var(--r);background:var(--surf2)">
-      <div>
+      padding:12px 16px;border-radius:var(--r);background:var(--surf2);flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
         <div style="font-weight:700;font-size:15px;color:var(--t1)">${dayLabel ?? '—'}, ${formatBR(date)}</div>
         <div style="font-size:12px;color:var(--t2)">
           ${teachersOnDate.length} professor${teachersOnDate.length !== 1 ? 'es' : ''} ausente${teachersOnDate.length !== 1 ? 's' : ''} ·
           ${total} aula${total !== 1 ? 's' : ''} ·
           ${covered} substituição${covered !== 1 ? 'ões' : ''} definida${covered !== 1 ? 's' : ''}
         </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" data-ab-action="downloadDayPDF" data-date="${date}">📄 PDF</button>
+        <button class="btn btn-ghost btn-sm" data-ab-action="shareWppDay" data-date="${date}">📱 WhatsApp</button>
       </div>
     </div>
     ${teacherBlocks}`;
@@ -484,13 +512,17 @@ function _viewByWeek() {
 
   return `${weekPicker}
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;
-      padding:12px 16px;border-radius:var(--r);background:var(--surf2)">
-      <div>
+      padding:12px 16px;border-radius:var(--r);background:var(--surf2);flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
         <div style="font-weight:700;font-size:14px;color:var(--t1)">Semana de ${weekLabel}</div>
         <div style="font-size:12px;color:var(--t2)">
           ${totalCount} aula${totalCount !== 1 ? 's' : ''} ausente${totalCount !== 1 ? 's' : ''} ·
           ${coveredCount} substituída${coveredCount !== 1 ? 's' : ''}
         </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" data-ab-action="downloadWeekPDF" data-mon="${monISO}">📄 PDF</button>
+        <button class="btn btn-ghost btn-sm" data-ab-action="shareWppWeek" data-mon="${monISO}">📱 WhatsApp</button>
       </div>
     </div>
     ${dayBlocks}`;
@@ -602,13 +634,19 @@ function _viewByMonth() {
 
   return `${monthPicker}
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;
-      padding:12px 16px;border-radius:var(--r);background:var(--surf2)">
-      <div>
+      padding:12px 16px;border-radius:var(--r);background:var(--surf2);flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
         <div style="font-weight:700;font-size:14px;color:var(--t1)">${monthLabel}</div>
         <div style="font-size:12px;color:var(--t2)">
           ${totalCount} aula${totalCount !== 1 ? 's' : ''} ausente${totalCount !== 1 ? 's' : ''} ·
           ${coveredCount} substituída${coveredCount !== 1 ? 's' : ''}
         </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" data-ab-action="downloadMonthPDF"
+          data-year="${year}" data-month="${month}">📄 PDF</button>
+        <button class="btn btn-ghost btn-sm" data-ab-action="shareWppMonth"
+          data-year="${year}" data-month="${month}">📱 WhatsApp</button>
       </div>
     </div>
     ${dayBlocks}`;
@@ -723,6 +761,61 @@ export function handleAbsenceAction(action, el) {
         absView.weekDate = formatISO(mon);
       }
       renderAbsencePage();
+      break;
+    }
+
+    case 'saveWppNumber': {
+      absView.whatsappNumber = el.value;
+      localStorage.setItem('wpp_number', el.value);
+      break;
+    }
+
+    case 'downloadDayPDF': {
+      const date = el.dataset.date ?? absView.date;
+      if (date) openPDF(generateDayHTML(date));
+      break;
+    }
+
+    case 'downloadTeacherPDF': {
+      const tid = el.dataset.tid ?? absView.teacherId;
+      if (tid) openPDF(generateTeacherHTML(tid));
+      break;
+    }
+
+    case 'downloadWeekPDF': {
+      if (el.dataset.mon) openPDF(generateWeekHTML(el.dataset.mon));
+      break;
+    }
+
+    case 'downloadMonthPDF': {
+      openPDF(generateMonthHTML(Number(el.dataset.year), Number(el.dataset.month)));
+      break;
+    }
+
+    case 'downloadFullPDF': {
+      openPDF(generateFullHTML());
+      break;
+    }
+
+    case 'shareWppDay': {
+      const date = el.dataset.date ?? absView.date;
+      if (date) openWhatsApp(buildWppTextDay(date), absView.whatsappNumber);
+      break;
+    }
+
+    case 'shareWppTeacher': {
+      const tid = el.dataset.tid ?? absView.teacherId;
+      if (tid) openWhatsApp(buildWppTextTeacher(tid), absView.whatsappNumber);
+      break;
+    }
+
+    case 'shareWppWeek': {
+      if (el.dataset.mon) openWhatsApp(buildWppTextWeek(el.dataset.mon), absView.whatsappNumber);
+      break;
+    }
+
+    case 'shareWppMonth': {
+      openWhatsApp(buildWppTextMonth(Number(el.dataset.year), Number(el.dataset.month)), absView.whatsappNumber);
       break;
     }
 
