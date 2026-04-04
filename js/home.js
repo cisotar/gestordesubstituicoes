@@ -55,27 +55,22 @@ export function renderHome() {
   const el = document.getElementById('pg-calendar');
   if (!el) return;
 
-  const segTabs = state.segments.map(seg => `
-    <button class="home-seg-tab ${seg.id === homeUI.segmentId ? 'on' : ''}"
-      data-home-action="selectSeg" data-seg="${seg.id}">
-      ${h(seg.name)}
-    </button>`).join('');
+  const dow        = new Date().getDay();
+  const todayLabel = (dow >= 1 && dow <= 5) ? DAYS[dow - 1] : null;
 
-  const content = homeUI.segmentId
-    ? _renderTeacherList(state.segments.find(s => s.id === homeUI.segmentId))
+  const frames   = state.segments.map(seg => _renderSegFrame(seg, todayLabel)).join('');
+  const weekGrid = homeUI.teacherId
+    ? _renderWeekGrid(homeUI.teacherId, state.segments.find(s => s.id === homeUI.segmentId))
     : '';
 
   el.innerHTML = `
-    <!-- Frame de boas-vindas compacto -->
     <div class="home-hero">
       <div class="home-hero-title"><span>Gestão</span>Escolar</div>
-      <div class="home-hero-sub">Selecione o nível de ensino para ver os professores e horários da semana.</div>
+      <div class="home-hero-sub">Selecione um professor para ver e gerir os horários da semana.</div>
     </div>
 
-    <!-- Botões de nível -->
-    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">${segTabs}</div>
-
-    ${content}`;
+    <div class="home-seg-frames">${frames}</div>
+    <div id="home-week-grid">${weekGrid}</div>`;
 }
 
 // ─── Lista de professores ─────────────────────────────────────────────────────
