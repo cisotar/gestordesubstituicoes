@@ -157,27 +157,35 @@ export function removeSubject(id) {
 // ─── Professores ─────────────────────────────────────────────────────────────
 
 export function addTeachersBulk(rawText) {
-  const names = rawText.split('\n').map(s => s.trim()).filter(Boolean);
+  // Formato por linha: nome;celular;email;matéria1,matéria2
+  const lines = rawText.split('\n').map(s => s.trim()).filter(Boolean);
   let added = 0;
-  names.forEach(name => {
+  lines.forEach(line => {
+    const parts  = line.split(';').map(p => p.trim());
+    const name   = parts[0];
+    if (!name) return;
     if (state.teachers.find(t => t.name.toLowerCase() === name.toLowerCase())) return;
-    state.teachers.push({ id: uid(), name, subjectIds: [], email: '', whatsapp: '', celular: '' });
+    const celular = parts[1] ?? '';
+    const email   = parts[2] ?? '';
+    const subjNames = parts[3] ? parts[3].split(',').map(s => s.trim()).filter(Boolean) : [];
+    const subjectIds = subjNames
+      .map(sn => state.subjects.find(s => s.name.toLowerCase() === sn.toLowerCase())?.id)
+      .filter(Boolean);
+    state.teachers.push({ id: uid(), name, subjectIds, email, whatsapp: '', celular });
     added++;
   });
   saveState(`${added} professor${added !== 1 ? 'es' : ''} adicionado${added !== 1 ? 's' : ''}`); updateNav(); renderSettings();
   return added;
 }
 
-export function addTeacher() {
-  const el   = document.getElementById('t-name');
-  const name = el?.value?.trim();
-  if (!name) { el?.focus(); return; }
-  if (state.teachers.find(t => t.name.toLowerCase() === name.toLowerCase())) {
-    alert('Professor já cadastrado.'); return;
+export function addTeacher(name, { email = '', celular = '', subjectIds = [] } = {}) {
+  if (!name?.trim()) return;
+  if (state.teachers.find(t => t.name.toLowerCase() === name.trim().toLowerCase())) {
+    return 'duplicate';
   }
-  state.teachers.push({ id: uid(), name, subjectIds: [], email: '', whatsapp: '', celular: '' });
-  saveState(`Professor '${name}' cadastrado`); updateNav(); renderSettings();
-  setTimeout(() => el?.focus(), 30);
+  state.teachers.push({ id: uid(), name: name.trim(), subjectIds, email, whatsapp: '', celular });
+  saveState(`Professor '${name.trim()}' cadastrado`); updateNav(); renderSettings();
+  return 'ok';
 }
 
 export function removeTeacher(id) {
@@ -195,14 +203,21 @@ export function removeTeacher(id) {
 export function saveTeacherSubjects(teacherId, subjectIds) {
   const teacher = state.teachers.find(t => t.id === teacherId);
   if (!teacher) return;
-  const removedIds = (teacher.subjectIds ?? []).filter(id => !subjectIds.includes(id));
+  const oldIds     = teacher.subjectIds ?? [];
+  const removedIds = oldIds.filter(id => !subjectIds.includes(id));
+  const addedIds   = subjectIds.filter(id => !oldIds.includes(id));
   teacher.subjectIds = subjectIds;
-  // Atualiza horários cujo subjectId foi removido
+  // Propaga mudança para os horários com matéria removida:
+  // — troca 1-para-1: 1 removida + 1 adicionada → substitui diretamente
+  // — só 1 matéria final → atribui a todos os horários órfãos
+  // — caso ambíguo → limpa para null
   if (removedIds.length) {
-    const newSingle = subjectIds.length === 1 ? subjectIds[0] : null;
+    const newSubjectId =
+      (removedIds.length === 1 && addedIds.length === 1) ? addedIds[0] :
+      subjectIds.length === 1 ? subjectIds[0] : null;
     state.schedules.forEach(s => {
       if (s.teacherId === teacherId && removedIds.includes(s.subjectId)) {
-        s.subjectId = newSingle;
+        s.subjectId = newSubjectId;
       }
     });
   }

@@ -217,8 +217,12 @@ function refreshCellById(segId, turno, aulaIdx, day, teacherId) {
     const subj = state.subjects.find(x => x.id === s.subjectId);
     return `
       <div class="sched-cell-card sched-mine">
-        <div class="sched-card-name">${h(subj?.name ?? '—')}</div>
-        <div class="sched-card-info">${h(s.turma)}</div>
+        <div class="sched-card-name">${h(s.turma)}</div>
+        <div class="sched-card-info">${h(subj?.name ?? '—')}</div>
+        <button class="sched-card-edit"
+          data-action="editSchedule"
+          data-id="${s.id}"
+          title="Editar aula">✏</button>
         <button class="sched-card-del"
           data-action="removeScheduleImmediate"
           data-id="${s.id}"

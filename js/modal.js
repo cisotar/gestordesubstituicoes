@@ -1,4 +1,4 @@
-import { colorOfTeacher, colorOfAreaId, h, subKey } from './helpers.js';
+import { colorOfTeacher, colorOfAreaId, h, subKey, uid } from './helpers.js';
 import { slotLabel as slotName, slotTimeRange as slotTime } from './periods.js';
 import { DAYS, COLOR_PALETTE }     from './constants.js';
 import { state, saveState }        from './state.js';
@@ -110,6 +110,123 @@ export function assignSubstitute(teacherId, day, slot, subId) {
 export function clearSubstitute(teacherId, day, slot) {
   delete state.subs[subKey(teacherId, day, slot)];
   saveState(); updateNav(); renderTeacher();
+}
+
+// ─── Modal: Adicionar Professor ──────────────────────────────────────────────
+
+function _subjectCheckboxes(prefix) {
+  return state.areas.map(area => {
+    const subs = state.subjects.filter(s => s.areaId === area.id);
+    if (!subs.length) return '';
+    const cv = COLOR_PALETTE[area.colorIdx % COLOR_PALETTE.length];
+    return `
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;
+          background:${cv.tg};color:${cv.tx};display:inline-block;margin-bottom:6px">
+          ${h(area.name)}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${subs.map(s => `
+            <label style="display:flex;align-items:center;gap:6px;padding:5px 10px;
+              border-radius:6px;border:1.5px solid var(--bdr);cursor:pointer;font-size:13px;
+              color:var(--t1)">
+              <input type="checkbox" name="${prefix}" value="${s.id}"
+                style="accent-color:${cv.dt};width:14px;height:14px">
+              ${h(s.name)}
+            </label>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+export function openAddTeacherModal() {
+  const subjSection = state.subjects.length > 0 ? `
+    <div class="fld">
+      <label class="lbl">Matérias</label>
+      <div style="max-height:200px;overflow-y:auto;padding:4px 0;border:1px solid var(--bdr);
+        border-radius:var(--r);padding:10px">
+        ${_subjectCheckboxes('new-t-subj')}
+      </div>
+    </div>` : '';
+
+  show(`
+    <div class="m-hdr">
+      <h3 style="font-size:17px">Novo Professor</h3>
+      <button class="m-close" data-action="closeModal">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+      <div class="fld">
+        <label class="lbl">Nome *</label>
+        <input class="inp" id="new-t-name" placeholder="Nome completo">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fld">
+          <label class="lbl">Celular</label>
+          <input class="inp" id="new-t-celular" type="tel" placeholder="(11) 99999-9999">
+        </div>
+        <div class="fld">
+          <label class="lbl">E-mail</label>
+          <input class="inp" id="new-t-email" type="email" placeholder="prof@escola.edu.br">
+        </div>
+      </div>
+      ${subjSection}
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-dark" style="flex:1" data-action="saveAddTeacher">Adicionar</button>
+      <button class="btn btn-ghost" data-action="closeModal">Cancelar</button>
+    </div>`);
+  document.getElementById('new-t-name')?.focus();
+}
+
+export function saveAddTeacherModal() {
+  const name       = document.getElementById('new-t-name')?.value?.trim();
+  const celular    = document.getElementById('new-t-celular')?.value?.trim() ?? '';
+  const email      = document.getElementById('new-t-email')?.value?.trim()   ?? '';
+  const subjectIds = [...document.querySelectorAll('#modal-body input[name="new-t-subj"]:checked')]
+    .map(el => el.value);
+  if (!name) { document.getElementById('new-t-name')?.focus(); return; }
+  if (state.teachers.find(t => t.name.toLowerCase() === name.toLowerCase())) {
+    alert('Professor já cadastrado.'); return;
+  }
+  state.teachers.push({ id: uid(), name, subjectIds, email, whatsapp: '', celular });
+  saveState(`Professor '${name}' cadastrado`);
+  updateNav();
+  closeModal();
+  renderSettings();
+}
+
+// ─── Modal: Adicionar em Bloco ────────────────────────────────────────────────
+
+export function openAddTeachersBulkModal() {
+  show(`
+    <div class="m-hdr">
+      <h3 style="font-size:17px">Adicionar em Bloco</h3>
+      <button class="m-close" data-action="closeModal">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--t1);margin-bottom:12px">
+      Um professor por linha. Campos separados por ponto e vírgula:<br>
+      <code style="font-family:'DM Mono',monospace;background:var(--surf2);
+        padding:2px 6px;border-radius:4px;font-size:12px">
+        nome ; celular ; email ; matéria1, matéria2
+      </code>
+    </p>
+    <textarea class="inp" id="bulk-t-text" rows="8"
+      placeholder="Ana Silva;(11)99999-0001;ana@escola.edu.br;Português,Literatura&#10;João Lima;(11)99999-0002;joao@escola.edu.br;Matemática&#10;Maria Costa"
+      style="resize:vertical;font-family:'DM Mono',monospace;font-size:12px;margin-bottom:16px"></textarea>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-dark" style="flex:1" data-action="saveAddTeachersBulk">Adicionar todos</button>
+      <button class="btn btn-ghost" data-action="closeModal">Cancelar</button>
+    </div>`);
+  document.getElementById('bulk-t-text')?.focus();
+}
+
+export function saveAddTeachersBulkModal() {
+  const text = document.getElementById('bulk-t-text')?.value ?? '';
+  import('./actions.js').then(({ addTeachersBulk }) => {
+    const n = addTeachersBulk(text);
+    closeModal();
+    if (n > 0) import('./toast.js').then(({ toast }) => toast(`${n} professor${n !== 1 ? 'es' : ''} adicionado${n !== 1 ? 's' : ''}`, 'ok'));
+  });
 }
 
 // ─── Modal: Associar Matérias ao Professor ────────────────────────────────────
@@ -278,7 +395,10 @@ export function openEditSchedule(id) {
   ).join('');
 
   const teacher = state.teachers.find(t => t.id === sched.teacherId);
-  const mySubjs = (teacher?.subjectIds ?? [])
+  const mySubjIds = teacher?.subjectIds ?? [];
+  // Inclui sempre a matéria actual do horário, mesmo que já não esteja no perfil do professor
+  const subjIdSet = new Set([...mySubjIds, ...(sched.subjectId ? [sched.subjectId] : [])]);
+  const mySubjs = [...subjIdSet]
     .map(sid => state.subjects.find(s => s.id === sid)).filter(Boolean);
   const sOpts = `<option value="">— sem matéria —</option>` +
     mySubjs.map(s =>
@@ -340,5 +460,6 @@ export function saveEditSchedule(id) {
   if (conflict) { alert('Conflito: este professor já tem aula neste horário!'); return; }
 
   Object.assign(sched, { teacherId: tid, subjectId: sid || null, turma, day });
+  import('./db.js').then(({ saveDoc }) => saveDoc('schedules', sched));
   saveState(); closeModal(); renderSettings();
 }

@@ -4,6 +4,8 @@
  * Visualizações:
  *   - Por professor: lista de professores → clica → faltas por dia
  *   - Por dia: data selecionada → professores ausentes e aulas faltadas
+ *   - Por semana: semana atual (Seg–Sex) com seletor de semana
+ *   - Por mês: mês atual com seletor de mês
  */
 
 import { state }            from './state.js';
@@ -11,7 +13,11 @@ import { DAYS }             from './constants.js';
 import { h, colorOfTeacher,
          teacherSubjectNames } from './helpers.js';
 import { formatBR,
-         dateToDayLabel }   from './absences.js';
+         dateToDayLabel,
+         weekStart,
+         formatISO,
+         parseDate,
+         deleteAbsenceSlot } from './absences.js';
 import { getAulas,
          slotLabel }        from './periods.js';
 import { isAdminRole }      from './auth.js';
@@ -22,14 +28,18 @@ import { updateNav }        from './nav.js';
 // ─── UI state ─────────────────────────────────────────────────────────────────
 
 export const absView = {
-  mode:       'teacher', // 'teacher' | 'day'
+  mode:       'teacher', // 'teacher' | 'day' | 'week' | 'month'
   teacherId:  null,
   date:       null,
+  weekDate:   null,  // reference date for week view (defaults to today)
+  monthDate:  null,  // reference date for month view (defaults to today)
 };
 
 export function resetAbsenceUI() {
   absView.teacherId = null;
   absView.date      = null;
+  absView.weekDate  = null;
+  absView.monthDate = null;
 }
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -39,37 +49,114 @@ export function renderAbsencePage() {
   if (!el) return;
 
   const modeTabs = `
-    <div style="display:flex;gap:6px;margin-bottom:20px">
+    <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap">
       <button class="home-seg-tab ${absView.mode === 'teacher' ? 'on' : ''}"
         data-ab-action="setMode" data-mode="teacher">👤 Por Professor</button>
       <button class="home-seg-tab ${absView.mode === 'day' ? 'on' : ''}"
         data-ab-action="setMode" data-mode="day">📅 Por Dia</button>
+      <button class="home-seg-tab ${absView.mode === 'week' ? 'on' : ''}"
+        data-ab-action="setMode" data-mode="week">🗓 Por Semana</button>
+      <button class="home-seg-tab ${absView.mode === 'month' ? 'on' : ''}"
+        data-ab-action="setMode" data-mode="month">📆 Por Mês</button>
     </div>`;
 
-  const content = absView.mode === 'teacher'
-    ? _viewByTeacher()
-    : _viewByDay();
+  let content = '';
+  if (absView.mode === 'teacher') content = _viewByTeacher();
+  else if (absView.mode === 'day') content = _viewByDay();
+  else if (absView.mode === 'week') content = _viewByWeek();
+  else if (absView.mode === 'month') content = _viewByMonth();
 
   el.innerHTML = `
     <div class="ph" style="margin-bottom:16px">
-      <h2>Ausências e Substituições</h2>
+      <h2>Relatório de Ausências</h2>
     </div>
     ${modeTabs}
+    ${_removeSelectedBar()}
     ${content}`;
+
+  _bindCheckboxes();
 }
 
 export function renderAbsenceList() {
   renderAbsencePage();
 }
 
+// ─── Floating "Remover selecionadas" bar ──────────────────────────────────────
+
+function _removeSelectedBar() {
+  if (!isAdminRole()) return '';
+  return `
+    <div id="abs-bulk-bar" style="display:none;position:sticky;top:64px;z-index:50;
+      background:var(--navy);color:#fff;padding:10px 16px;border-radius:var(--r);
+      margin-bottom:12px;align-items:center;justify-content:space-between;gap:12px">
+      <span id="abs-bulk-count" style="font-size:13px;font-weight:700"></span>
+      <button class="btn" data-ab-action="deleteSelected"
+        style="background:#fff;color:var(--navy);font-weight:700;font-size:13px;padding:6px 16px;border-radius:var(--r)">
+        🗑 Remover selecionadas
+      </button>
+    </div>`;
+}
+
+// ─── Shared slot row builder ───────────────────────────────────────────────────
+
+function _slotRow(sl, { showTeacher = false } = {}) {
+  const subj  = state.subjects.find(s => s.id === sl.subjectId);
+  const sub   = sl.substituteId ? state.teachers.find(t => t.id === sl.substituteId) : null;
+  const parts = sl.timeSlot.split('|');
+  const aula  = getAulas(parts[0], parts[1]).find(p => p.aulaIdx === Number(parts[2]));
+  const teacher = showTeacher ? state.teachers.find(t => t.id === sl.teacherId) : null;
+
+  const checkbox = isAdminRole() ? `
+    <input type="checkbox" class="abs-slot-check"
+      data-absence="${sl.absenceId}" data-slot="${sl.id}"
+      style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:var(--navy)">` : '';
+
+  const deleteBtn = isAdminRole() ? `
+    <button class="btn-del" data-ab-action="deleteSlot"
+      data-absence="${sl.absenceId}" data-slot="${sl.id}">✕</button>` : '';
+
+  const teacherInfo = teacher ? `
+    <div style="font-size:11px;color:var(--t2);margin-top:1px">
+      ${h(teacher.name)}
+    </div>` : '';
+
+  return `
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 0;
+      border-bottom:1px solid var(--bdr)">
+      ${checkbox}
+      <div style="min-width:70px;font-family:'DM Mono',monospace;font-size:11px;color:var(--t1)">
+        ${h(aula?.label ?? slotLabel(sl.timeSlot))}<br>
+        <span style="font-size:10px;color:var(--t2)">${h(aula?.inicio ?? '')}–${h(aula?.fim ?? '')}</span>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;color:var(--t1)">${h(sl.turma)}</div>
+        <div style="font-size:12px;color:var(--t2)">${h(subj?.name ?? '—')}</div>
+        ${teacherInfo}
+      </div>
+      <div style="text-align:right;min-width:120px">
+        ${sub
+          ? `<div style="font-size:12px;color:var(--ok);font-weight:700">✓ ${h(sub.name)}</div>`
+          : `<div style="font-size:12px;color:var(--err);font-weight:600">⚠ Sem sub.</div>`}
+      </div>
+      ${deleteBtn}
+    </div>`;
+}
+
+// ─── Select-all button for a group ────────────────────────────────────────────
+
+function _selectAllBtn(groupKey) {
+  if (!isAdminRole()) return '';
+  return `
+    <button class="btn btn-ghost btn-xs" data-ab-action="toggleSelectAll"
+      data-group="${h(groupKey)}"
+      style="font-size:11px;padding:2px 10px">
+      Selecionar todas
+    </button>`;
+}
+
 // ═══ VISUALIZAÇÃO POR PROFESSOR ══════════════════════════════════════════════
 
 function _viewByTeacher() {
-  // Professores que têm ausências registradas
-  const teachersWithAbs = state.teachers.filter(t =>
-    (state.absences ?? []).some(ab => ab.teacherId === t.id)
-  ).sort((a, b) => a.name.localeCompare(b.name));
-
   const allTeachers = state.teachers
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -120,13 +207,13 @@ function _viewByTeacher() {
     <div class="home-main-grid">
       <!-- Lista de professores -->
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--t3);
+        <div style="font-size:11px;font-weight:700;color:var(--t2);
           text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
           ${allTeachers.length} professor${allTeachers.length !== 1 ? 'es' : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;
           max-height:70vh;overflow-y:auto;padding-right:4px">
-          ${teacherBtns || '<p style="color:var(--t3);font-size:13px">Nenhum professor cadastrado.</p>'}
+          ${teacherBtns || '<p style="color:var(--t2);font-size:13px">Nenhum professor cadastrado.</p>'}
         </div>
       </div>
       <!-- Detalhe -->
@@ -155,58 +242,37 @@ function _teacherAbsDetail(teacherId) {
   absences.forEach(ab => {
     ab.slots.forEach(sl => {
       if (!byDate[sl.date]) byDate[sl.date] = [];
-      byDate[sl.date].push({ ...sl, absenceId: ab.id });
+      byDate[sl.date].push({ ...sl, absenceId: ab.id, teacherId: ab.teacherId });
     });
   });
 
   const dateBlocks = Object.keys(byDate).sort().map(date => {
-    const slots   = byDate[date];
+    const slots    = byDate[date];
     const dayLabel = dateToDayLabel(date);
     const covered  = slots.filter(s => s.substituteId).length;
     const statusColor = covered === slots.length ? 'var(--ok)' : covered > 0 ? '#D97706' : 'var(--err)';
     const statusLabel = covered === slots.length ? '✓ Coberta'
       : covered > 0 ? `⚠ Parcial (${covered}/${slots.length})` : '✕ Sem substituto';
 
-    const slotRows = slots.sort((a,b) => a.timeSlot.localeCompare(b.timeSlot)).map(sl => {
-      const subj = state.subjects.find(s => s.id === sl.subjectId);
-      const sub  = sl.substituteId ? state.teachers.find(t => t.id === sl.substituteId) : null;
-      const parts = sl.timeSlot.split('|');
-      const aula  = getAulas(parts[0], parts[1]).find(p => p.aulaIdx === Number(parts[2]));
-
-      return `
-        <div style="display:flex;align-items:center;gap:12px;padding:8px 0;
-          border-bottom:1px solid var(--bdr)">
-          <div style="min-width:70px;font-family:'DM Mono',monospace;font-size:11px;color:var(--t1)">
-            ${h(aula?.label ?? slotLabel(sl.timeSlot))}<br>
-            <span style="font-size:10px;color:var(--t2)">${h(aula?.inicio ?? '')}–${h(aula?.fim ?? '')}</span>
-          </div>
-          <div style="flex:1">
-            <div style="font-weight:700;font-size:13px">${h(sl.turma)}</div>
-            <div style="font-size:12px;color:var(--t2)">${h(subj?.name ?? '—')}</div>
-          </div>
-          <div style="text-align:right">
-            ${sub
-              ? `<div style="font-size:12px;color:var(--ok);font-weight:700">✓ ${h(sub.name)}</div>`
-              : `<div style="font-size:12px;color:var(--err)">⚠ Sem sub.</div>`}
-          </div>
-          ${isAdminRole() ? `
-            <button class="btn-del" data-ab-action="deleteSlot"
-              data-absence="${sl.absenceId}" data-slot="${sl.id}">✕</button>` : ''}
-        </div>`;
-    }).join('');
+    const groupKey = `teacher-${teacherId}-${date}`;
+    const slotRows = slots.sort((a, b) => a.timeSlot.localeCompare(b.timeSlot))
+      .map(sl => _slotRow(sl)).join('');
 
     return `
-      <div class="card card-b" style="margin-bottom:12px">
+      <div class="card card-b" style="margin-bottom:12px" data-group="${h(groupKey)}">
         <div style="display:flex;align-items:center;justify-content:space-between;
           margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bdr)">
           <div>
-            <div style="font-weight:700;font-size:15px">${dayLabel}</div>
+            <div style="font-weight:700;font-size:15px;color:var(--t1)">${dayLabel}</div>
             <div style="font-size:12px;color:var(--t2);font-family:'DM Mono',monospace">
               ${formatBR(date)}</div>
           </div>
-          <div style="text-align:right">
-            <div style="font-size:13px;font-weight:700;color:${statusColor}">${statusLabel}</div>
-            <div style="font-size:11px;color:var(--t3)">${slots.length} aula${slots.length !== 1 ? 's' : ''}</div>
+          <div style="display:flex;align-items:center;gap:10px;text-align:right">
+            ${_selectAllBtn(groupKey)}
+            <div>
+              <div style="font-size:13px;font-weight:700;color:${statusColor}">${statusLabel}</div>
+              <div style="font-size:11px;color:var(--t2)">${slots.length} aula${slots.length !== 1 ? 's' : ''}</div>
+            </div>
           </div>
         </div>
         ${slotRows}
@@ -233,7 +299,7 @@ function _teacherAbsDetail(teacherId) {
 // ═══ VISUALIZAÇÃO POR DIA ═════════════════════════════════════════════════════
 
 function _viewByDay() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = formatISO(new Date());
   const date  = absView.date ?? today;
 
   // Todas as datas com ausências registradas
@@ -264,7 +330,7 @@ function _viewByDay() {
       </div>
       ${datesWithAbs.length > 0 ? `
         <div>
-          <div class="lbl" style="margin-bottom:4px">Datas com ausências</div>
+          <div class="lbl" style="margin-bottom:4px;color:var(--t2)">Datas com ausências</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:500px">
             ${datesWithAbs.slice(0, 10).map(d => `
               <button class="btn ${d === date ? 'btn-dark' : 'btn-ghost'} btn-xs"
@@ -291,33 +357,11 @@ function _viewByDay() {
     const covered  = mySlots.filter(s => s.substituteId).length;
     const statusColor = covered === mySlots.length ? 'var(--ok)' : covered > 0 ? '#D97706' : 'var(--err)';
 
-    const slotRows = mySlots.map(sl => {
-      const subj = state.subjects.find(s => s.id === sl.subjectId);
-      const sub  = sl.substituteId ? state.teachers.find(t => t.id === sl.substituteId) : null;
-      const parts = sl.timeSlot.split('|');
-      const aula  = getAulas(parts[0], parts[1]).find(p => p.aulaIdx === Number(parts[2]));
-
-      return `
-        <div style="display:flex;align-items:center;gap:12px;padding:8px 0;
-          border-bottom:1px solid var(--bdr)">
-          <div style="min-width:70px;font-family:'DM Mono',monospace;font-size:11px;color:var(--t1)">
-            ${h(aula?.label ?? slotLabel(sl.timeSlot))}<br>
-            <span style="font-size:10px;color:var(--t2)">${h(aula?.inicio ?? '')}–${h(aula?.fim ?? '')}</span>
-          </div>
-          <div style="flex:1">
-            <div style="font-weight:700;font-size:13px">${h(sl.turma)}</div>
-            <div style="font-size:12px;color:var(--t2)">${h(subj?.name ?? '—')}</div>
-          </div>
-          <div style="text-align:right;min-width:120px">
-            ${sub
-              ? `<div style="font-size:12px;font-weight:700;color:var(--ok)">✓ ${h(sub.name)}</div>`
-              : `<div style="font-size:12px;color:var(--err);font-weight:600">⚠ Sem substituto</div>`}
-          </div>
-        </div>`;
-    }).join('');
+    const groupKey = `day-${date}-${teacher.id}`;
+    const slotRows = mySlots.map(sl => _slotRow(sl)).join('');
 
     return `
-      <div class="card card-b" style="margin-bottom:12px">
+      <div class="card card-b" style="margin-bottom:12px" data-group="${h(groupKey)}">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;
           padding-bottom:10px;border-bottom:1px solid var(--bdr)">
           <div class="th-av" style="background:${cv.tg};color:${cv.tx};
@@ -325,25 +369,28 @@ function _viewByDay() {
             ${h(teacher.name.charAt(0))}
           </div>
           <div style="flex:1">
-            <div style="font-weight:700;font-size:14px">${h(teacher.name)}</div>
+            <div style="font-weight:700;font-size:14px;color:var(--t1)">${h(teacher.name)}</div>
             <div style="font-size:12px;color:var(--t2)">${h(teacherSubjectNames(teacher) || '—')}</div>
           </div>
-          <div style="font-size:13px;font-weight:700;color:${statusColor}">
-            ${covered}/${mySlots.length} coberta${covered !== 1 ? 's' : ''}
+          <div style="display:flex;align-items:center;gap:10px">
+            ${_selectAllBtn(groupKey)}
+            <div style="font-size:13px;font-weight:700;color:${statusColor}">
+              ${covered}/${mySlots.length} coberta${covered !== 1 ? 's' : ''}
+            </div>
           </div>
         </div>
         ${slotRows}
       </div>`;
   }).join('');
 
-  const total    = slotsOnDate.length;
-  const covered  = slotsOnDate.filter(s => s.substituteId).length;
+  const total   = slotsOnDate.length;
+  const covered = slotsOnDate.filter(s => s.substituteId).length;
 
   return `${dateSelect}
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;
       padding:12px 16px;border-radius:var(--r);background:var(--surf2)">
       <div>
-        <div style="font-weight:700;font-size:15px">${dayLabel ?? '—'}, ${formatBR(date)}</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1)">${dayLabel ?? '—'}, ${formatBR(date)}</div>
         <div style="font-size:12px;color:var(--t2)">
           ${teachersOnDate.length} professor${teachersOnDate.length !== 1 ? 'es' : ''} ausente${teachersOnDate.length !== 1 ? 's' : ''} ·
           ${total} aula${total !== 1 ? 's' : ''} ·
@@ -352,6 +399,224 @@ function _viewByDay() {
       </div>
     </div>
     ${teacherBlocks}`;
+}
+
+// ═══ VISUALIZAÇÃO POR SEMANA ══════════════════════════════════════════════════
+
+function _viewByWeek() {
+  const today    = new Date();
+  const refDate  = absView.weekDate ? parseDate(absView.weekDate) : today;
+  const monISO   = weekStart(formatISO(refDate));   // returns ISO string
+  const monDate  = parseDate(monISO);              // convert to Date for arithmetic
+
+  // Build labels for the week picker
+  const friDate  = new Date(monDate);
+  friDate.setDate(monDate.getDate() + 4);
+  const friISO   = formatISO(friDate);
+  const weekLabel = `${formatBR(monISO)} – ${formatBR(friISO)}`;
+
+  const weekPicker = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-ghost" data-ab-action="changeWeek" data-dir="-1" style="font-size:18px;padding:4px 12px">‹</button>
+      <div style="font-weight:700;font-size:14px;min-width:200px;text-align:center;color:var(--t1)">
+        ${weekLabel}
+      </div>
+      <button class="btn btn-ghost" data-ab-action="changeWeek" data-dir="1" style="font-size:18px;padding:4px 12px">›</button>
+      <button class="btn btn-ghost btn-xs" data-ab-action="changeWeek" data-dir="0" style="font-size:11px">Hoje</button>
+    </div>`;
+
+  // Collect slots for each of the 5 days Mon–Fri
+  const days = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monDate);
+    d.setDate(monDate.getDate() + i);
+    days.push(formatISO(d));
+  }
+
+  const allSlots = (state.absences ?? []).flatMap(ab =>
+    ab.slots.map(sl => ({ ...sl, teacherId: ab.teacherId, absenceId: ab.id }))
+  );
+
+  let hasAny = false;
+  const dayBlocks = days.map(date => {
+    const slots = allSlots.filter(sl => sl.date === date)
+      .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
+    if (slots.length === 0) return '';
+
+    hasAny = true;
+    const dayLabel = dateToDayLabel(date);
+    const covered  = slots.filter(s => s.substituteId).length;
+    const statusColor = covered === slots.length ? 'var(--ok)' : covered > 0 ? '#D97706' : 'var(--err)';
+
+    const groupKey = `week-${date}`;
+    const slotRows = slots.map(sl => _slotRow(sl, { showTeacher: true })).join('');
+
+    return `
+      <div class="card card-b" style="margin-bottom:12px" data-group="${h(groupKey)}">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bdr)">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--t1)">${dayLabel}</div>
+            <div style="font-size:12px;color:var(--t2);font-family:'DM Mono',monospace">${formatBR(date)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            ${_selectAllBtn(groupKey)}
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:700;color:${statusColor}">
+                ${covered}/${slots.length} coberta${covered !== 1 ? 's' : ''}
+              </div>
+              <div style="font-size:11px;color:var(--t2)">${slots.length} aula${slots.length !== 1 ? 's' : ''}</div>
+            </div>
+          </div>
+        </div>
+        ${slotRows}
+      </div>`;
+  }).filter(Boolean).join('');
+
+  if (!hasAny) {
+    return `${weekPicker}
+      <div class="empty" style="max-width:400px">
+        <div class="empty-ico">✅</div>
+        <div class="empty-ttl">Sem ausências nesta semana</div>
+        <div class="empty-dsc">Nenhuma falta registrada de ${formatBR(monISO)} a ${formatBR(friISO)}.</div>
+      </div>`;
+  }
+
+  const totalSlots  = days.flatMap(d => allSlots.filter(sl => sl.date === d));
+  const totalCount  = totalSlots.length;
+  const coveredCount = totalSlots.filter(s => s.substituteId).length;
+
+  return `${weekPicker}
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;
+      padding:12px 16px;border-radius:var(--r);background:var(--surf2)">
+      <div>
+        <div style="font-weight:700;font-size:14px;color:var(--t1)">Semana de ${weekLabel}</div>
+        <div style="font-size:12px;color:var(--t2)">
+          ${totalCount} aula${totalCount !== 1 ? 's' : ''} ausente${totalCount !== 1 ? 's' : ''} ·
+          ${coveredCount} substituída${coveredCount !== 1 ? 's' : ''}
+        </div>
+      </div>
+    </div>
+    ${dayBlocks}`;
+}
+
+// ═══ VISUALIZAÇÃO POR MÊS ═════════════════════════════════════════════════════
+
+const _MONTH_NAMES = [
+  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
+];
+
+function _viewByMonth() {
+  const today    = new Date();
+  const refDate  = absView.monthDate ? parseDate(absView.monthDate) : today;
+  const year     = refDate.getFullYear();
+  const month    = refDate.getMonth(); // 0-based
+  const monthLabel = `${_MONTH_NAMES[month]} ${year}`;
+
+  const monthPicker = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn btn-ghost" data-ab-action="changeMonth" data-dir="-1" style="font-size:18px;padding:4px 12px">‹</button>
+      <div style="font-weight:700;font-size:14px;min-width:160px;text-align:center;color:var(--t1)">
+        ${monthLabel}
+      </div>
+      <button class="btn btn-ghost" data-ab-action="changeMonth" data-dir="1" style="font-size:18px;padding:4px 12px">›</button>
+      <button class="btn btn-ghost btn-xs" data-ab-action="changeMonth" data-dir="0" style="font-size:11px">Hoje</button>
+    </div>`;
+
+  const allSlots = (state.absences ?? []).flatMap(ab =>
+    ab.slots.map(sl => ({ ...sl, teacherId: ab.teacherId, absenceId: ab.id }))
+  );
+
+  // Filter slots in the selected month
+  const monthSlots = allSlots.filter(sl => {
+    const d = parseDate(sl.date);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+
+  if (monthSlots.length === 0) {
+    return `${monthPicker}
+      <div class="empty" style="max-width:400px">
+        <div class="empty-ico">✅</div>
+        <div class="empty-ttl">Sem ausências neste mês</div>
+        <div class="empty-dsc">Nenhuma falta registrada em ${monthLabel}.</div>
+      </div>`;
+  }
+
+  // Group by date
+  const byDate = {};
+  monthSlots.forEach(sl => {
+    if (!byDate[sl.date]) byDate[sl.date] = [];
+    byDate[sl.date].push(sl);
+  });
+
+  const dayBlocks = Object.keys(byDate).sort().map(date => {
+    const slots   = byDate[date].sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
+    const dayLabel = dateToDayLabel(date);
+    const covered  = slots.filter(s => s.substituteId).length;
+    const statusColor = covered === slots.length ? 'var(--ok)' : covered > 0 ? '#D97706' : 'var(--err)';
+
+    const groupKey = `month-${date}`;
+    const slotRows = slots.map(sl => _slotRow(sl, { showTeacher: true })).join('');
+
+    return `
+      <div class="card card-b" style="margin-bottom:12px" data-group="${h(groupKey)}">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bdr)">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--t1)">${dayLabel}</div>
+            <div style="font-size:12px;color:var(--t2);font-family:'DM Mono',monospace">${formatBR(date)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            ${_selectAllBtn(groupKey)}
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:700;color:${statusColor}">
+                ${covered}/${slots.length} coberta${covered !== 1 ? 's' : ''}
+              </div>
+              <div style="font-size:11px;color:var(--t2)">${slots.length} aula${slots.length !== 1 ? 's' : ''}</div>
+            </div>
+          </div>
+        </div>
+        ${slotRows}
+      </div>`;
+  }).join('');
+
+  const totalCount   = monthSlots.length;
+  const coveredCount = monthSlots.filter(s => s.substituteId).length;
+
+  return `${monthPicker}
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;
+      padding:12px 16px;border-radius:var(--r);background:var(--surf2)">
+      <div>
+        <div style="font-weight:700;font-size:14px;color:var(--t1)">${monthLabel}</div>
+        <div style="font-size:12px;color:var(--t2)">
+          ${totalCount} aula${totalCount !== 1 ? 's' : ''} ausente${totalCount !== 1 ? 's' : ''} ·
+          ${coveredCount} substituída${coveredCount !== 1 ? 's' : ''}
+        </div>
+      </div>
+    </div>
+    ${dayBlocks}`;
+}
+
+// ─── Checkbox binding ─────────────────────────────────────────────────────────
+
+function _updateBulkBar() {
+  const bar   = document.getElementById('abs-bulk-bar');
+  const count = document.querySelectorAll('.abs-slot-check:checked').length;
+  if (!bar) return;
+  if (count > 0) {
+    bar.style.display = 'flex';
+    const countEl = document.getElementById('abs-bulk-count');
+    if (countEl) countEl.textContent = `${count} selecionada${count !== 1 ? 's' : ''}`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function _bindCheckboxes() {
+  document.querySelectorAll('.abs-slot-check').forEach(cb => {
+    cb.addEventListener('change', _updateBulkBar);
+  });
 }
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -372,7 +637,7 @@ export function handleAbsenceAction(action, el) {
       const detail = document.getElementById('abs-detail');
       if (detail) {
         detail.innerHTML = _teacherAbsDetail(absView.teacherId);
-        _bindDetail();
+        _bindCheckboxes();
       } else {
         renderAbsencePage();
       }
@@ -389,28 +654,73 @@ export function handleAbsenceAction(action, el) {
       break;
     }
 
-    case 'deleteSlot': {
-      if (!confirm('Remover este registro de falta?')) return;
-      const { absence: absenceId, slot: slotId } = el.dataset;
-      import('./absences.js').then(({ deleteAbsenceSlot }) => {
-        deleteAbsenceSlot(absenceId, slotId);
-        updateNav();
-        toast('Falta removida', 'ok');
-        renderAbsencePage();
-      });
-      break;
-    }
-
     case 'changeDay': {
       const val = document.getElementById('abs-day-picker')?.value;
       if (val) { absView.date = val; renderAbsencePage(); }
       break;
     }
-  }
-}
 
-function _bindDetail() {
-  document.querySelectorAll('[data-ab-action="deleteSlot"]').forEach(btn => {
-    btn.addEventListener('click', () => handleAbsenceAction('deleteSlot', btn));
-  });
+    case 'deleteSlot': {
+      if (!confirm('Remover este registro de falta?')) return;
+      const { absence: absenceId, slot: slotId } = el.dataset;
+      deleteAbsenceSlot(absenceId, slotId);
+      updateNav();
+      toast('Falta removida', 'ok');
+      renderAbsencePage();
+      break;
+    }
+
+    case 'deleteSelected': {
+      const checked = document.querySelectorAll('.abs-slot-check:checked');
+      if (checked.length === 0) return;
+      if (!confirm(`Remover ${checked.length} falta${checked.length !== 1 ? 's' : ''} selecionada${checked.length !== 1 ? 's' : ''}?`)) return;
+      checked.forEach(cb => {
+        deleteAbsenceSlot(cb.dataset.absence, cb.dataset.slot);
+      });
+      updateNav();
+      toast(`${checked.length} falta${checked.length !== 1 ? 's' : ''} removida${checked.length !== 1 ? 's' : ''}`, 'ok');
+      renderAbsencePage();
+      break;
+    }
+
+    case 'toggleSelectAll': {
+      const groupKey = el.dataset.group;
+      const container = document.querySelector(`[data-group="${groupKey}"]`);
+      if (!container) return;
+      const boxes = container.querySelectorAll('.abs-slot-check');
+      const allChecked = [...boxes].every(cb => cb.checked);
+      boxes.forEach(cb => { cb.checked = !allChecked; });
+      el.textContent = allChecked ? 'Selecionar todas' : 'Desselecionar todas';
+      _updateBulkBar();
+      break;
+    }
+
+    case 'changeWeek': {
+      const dir = Number(el.dataset.dir);
+      if (dir === 0) {
+        absView.weekDate = null;
+      } else {
+        const refDate = absView.weekDate ? parseDate(absView.weekDate) : new Date();
+        const monISO  = weekStart(formatISO(refDate));
+        const mon     = parseDate(monISO);
+        mon.setDate(mon.getDate() + dir * 7);
+        absView.weekDate = formatISO(mon);
+      }
+      renderAbsencePage();
+      break;
+    }
+
+    case 'changeMonth': {
+      const dir = Number(el.dataset.dir);
+      if (dir === 0) {
+        absView.monthDate = null;
+      } else {
+        const refDate = absView.monthDate ? parseDate(absView.monthDate) : new Date();
+        const newDate = new Date(refDate.getFullYear(), refDate.getMonth() + dir, 1);
+        absView.monthDate = formatISO(newDate);
+      }
+      renderAbsencePage();
+      break;
+    }
+  }
 }

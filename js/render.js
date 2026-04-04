@@ -354,7 +354,7 @@ function tabPeriods() {
     ).join('');
 
     return `
-      <div class="card card-b" style="margin-bottom:20px">
+      <div class="card card-b">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
           <h3>${h(seg.name)}</h3>
           <div class="fld" style="margin:0;flex-direction:row;align-items:center;gap:8px">
@@ -395,7 +395,7 @@ function tabPeriods() {
       </div>`;
   }).join('');
 
-  return `<div>${segBlocks}</div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:20px">${segBlocks}</div>`;
 }
 
 
@@ -468,19 +468,16 @@ function tabTeachers() {
         const cv   = colorOfTeacher(t);
         const ct   = state.schedules.filter(s => s.teacherId === t.id).length;
         const subs = teacherSubjectNames(t);
-        const hasContact = t.email || t.whatsapp || t.celular;
         return `
           <div class="ti" style="flex-wrap:wrap;gap:8px">
             <span class="ti-dot" style="background:${cv.dt}"></span>
             <div style="flex:1;min-width:140px">
               <div class="ti-name">${h(t.name)}</div>
-              ${subs ? `<div style="font-size:11px;color:var(--t3);margin-top:2px">${h(subs)}</div>` : ''}
-              ${hasContact ? `
-                <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
-                  ${t.email    ? `<span class="contact-chip">✉ ${h(t.email)}</span>`    : ''}
-                  ${t.whatsapp ? `<span class="contact-chip">💬 ${h(t.whatsapp)}</span>` : ''}
-                  ${t.celular  ? `<span class="contact-chip">📱 ${h(t.celular)}</span>`  : ''}
-                </div>` : ''}
+              ${subs ? `<div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:2px">${h(subs)}</div>` : ''}
+              <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+                ${t.celular  ? `<span class="contact-chip">📱 ${h(t.celular)}</span>`  : ''}
+                ${t.email    ? `<span class="contact-chip">✉ ${h(t.email)}</span>`    : ''}
+              </div>
             </div>
             <span class="ti-cnt">${ct} aula${ct !== 1 ? 's' : ''}</span>
             <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚 Matérias</button>
@@ -502,22 +499,19 @@ function tabTeachers() {
     const segList = segTs.length === 0
       ? `<p style="color:var(--t3);font-size:13px;padding:12px 0">Nenhum professor com aulas neste nível.</p>`
       : segTs.map(t => {
-          const cv = colorOfTeacher(t);
-          const ct = state.schedules.filter(s => s.teacherId === t.id).length;
+          const cv   = colorOfTeacher(t);
+          const ct   = state.schedules.filter(s => s.teacherId === t.id).length;
           const subs = teacherSubjectNames(t);
-          const hasContact = t.email || t.whatsapp || t.celular;
           return `
             <div class="ti" style="flex-wrap:wrap;gap:8px">
               <span class="ti-dot" style="background:${cv.dt}"></span>
               <div style="flex:1;min-width:100px">
                 <div class="ti-name">${h(t.name)}</div>
-                ${subs ? `<div style="font-size:11px;color:var(--t3);margin-top:2px">${h(subs)}</div>` : ''}
-                ${hasContact ? `
-                  <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-                    ${t.email    ? `<span class="contact-chip">✉ ${h(t.email)}</span>`    : ''}
-                    ${t.whatsapp ? `<span class="contact-chip">💬 ${h(t.whatsapp)}</span>` : ''}
-                    ${t.celular  ? `<span class="contact-chip">📱 ${h(t.celular)}</span>`  : ''}
-                  </div>` : ''}
+                ${subs ? `<div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:2px">${h(subs)}</div>` : ''}
+                <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+                  ${t.celular ? `<span class="contact-chip">📱 ${h(t.celular)}</span>` : ''}
+                  ${t.email   ? `<span class="contact-chip">✉ ${h(t.email)}</span>`   : ''}
+                </div>
               </div>
               <span class="ti-cnt">${ct} aula${ct !== 1 ? 's' : ''}</span>
               <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚</button>
@@ -567,27 +561,10 @@ function tabTeachers() {
 
   return `
     <div class="tab-full-width">
-      <!-- Cadastro -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="card card-b">
-          <h3 style="margin-bottom:6px">Cadastrar em Bloco</h3>
-          <p style="font-size:13px;color:var(--t2);margin-bottom:12px">
-            Um nome por linha. Depois use 📚 para associar disciplinas.
-          </p>
-          <textarea class="inp" id="teachers-bulk" rows="4"
-            placeholder="Maria Silva&#10;João Pereira&#10;Ana Rodrigues"
-            style="resize:vertical;font-family:'DM Mono',monospace;font-size:13px"></textarea>
-          <div style="margin-top:10px;display:flex;justify-content:flex-end">
-            <button class="btn btn-dark" data-action="addTeachersBulk">Adicionar todos</button>
-          </div>
-        </div>
-        <div class="card card-b" style="display:flex;flex-direction:column;justify-content:center">
-          <h3 style="margin-bottom:10px">Adicionar individualmente</h3>
-          <div style="display:flex;gap:8px">
-            <input class="inp" id="t-name" placeholder="Nome do professor" style="flex:1" data-enter="addTeacher">
-            <button class="btn btn-dark" data-action="addTeacher">+</button>
-          </div>
-        </div>
+      <!-- Botões de cadastro -->
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <button class="btn btn-dark" data-action="openAddTeacher">+ Adicionar Professor</button>
+        <button class="btn btn-ghost" data-action="openAddTeachersBulk">Adicionar em Bloco</button>
       </div>
       <!-- Dois blocos por segmento -->
       <div class="seg-cards-grid">${teacherCols}</div>
@@ -804,6 +781,10 @@ export function renderSchedCell(segId, periodo, teacherId, day) {
       <div class="sched-cell-card sched-mine">
         <div class="sched-card-name" style="color:var(--t1)">${h(s.turma)}</div>
         <div class="sched-card-info" style="color:var(--t1)">${h(subj?.name ?? '—')}</div>
+        <button class="sched-card-edit"
+          data-action="editSchedule"
+          data-id="${s.id}"
+          title="Editar aula">✏</button>
         <button class="sched-card-del"
           data-action="removeScheduleImmediate"
           data-id="${s.id}" data-seg="${segId}"

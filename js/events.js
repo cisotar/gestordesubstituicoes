@@ -5,6 +5,8 @@ import {
   openTeacherSubjects, saveTeacherSubjectsFromModal,
   openEditTeacher, saveEditTeacher,
   openEditSchedule, saveEditSchedule,
+  openAddTeacherModal, saveAddTeacherModal,
+  openAddTeachersBulkModal, saveAddTeachersBulkModal,
 } from './modal.js';
 import {
   openScheduleModal, closeScheduleModal,
@@ -140,6 +142,10 @@ const ACTION_MAP = {
   removeSubject:   el => removeSubject(el.dataset.id),
 
   // Professores
+  openAddTeacher:      ()  => openAddTeacherModal(),
+  saveAddTeacher:      ()  => saveAddTeacherModal(),
+  openAddTeachersBulk: ()  => openAddTeachersBulkModal(),
+  saveAddTeachersBulk: ()  => saveAddTeachersBulkModal(),
   addTeacher:          ()  => addTeacher(),
   addTeachersBulk:     ()  => { const n = addTeachersBulk(v('teachers-bulk')); if (n) { const el = document.getElementById('teachers-bulk'); if (el) el.value = ''; } },
   removeTeacher:       el  => removeTeacher(el.dataset.id),
