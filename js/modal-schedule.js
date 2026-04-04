@@ -194,6 +194,7 @@ function showConflictAlert(title, detail) {
 export function removeScheduleImmediate(id, segId, turno, aulaIdx, day, teacherId) {
   state.schedules = state.schedules.filter(s => s.id !== id);
   saveState();
+  import('./db.js').then(({ deleteDocById }) => deleteDocById('schedules', id));
   updateNav();
   refreshCellById(segId, turno, aulaIdx, day, teacherId);
   updateTeacherHeader(teacherId);

@@ -195,7 +195,17 @@ export function removeTeacher(id) {
 export function saveTeacherSubjects(teacherId, subjectIds) {
   const teacher = state.teachers.find(t => t.id === teacherId);
   if (!teacher) return;
+  const removedIds = (teacher.subjectIds ?? []).filter(id => !subjectIds.includes(id));
   teacher.subjectIds = subjectIds;
+  // Atualiza horários cujo subjectId foi removido
+  if (removedIds.length) {
+    const newSingle = subjectIds.length === 1 ? subjectIds[0] : null;
+    state.schedules.forEach(s => {
+      if (s.teacherId === teacherId && removedIds.includes(s.subjectId)) {
+        s.subjectId = newSingle;
+      }
+    });
+  }
   saveState('Alterações salvas'); renderSettings();
 }
 
