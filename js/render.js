@@ -596,10 +596,12 @@ function tabSchedules() {
       seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`))
     );
     // Mostra professores com aulas neste segmento + professores sem nenhum horário ainda
+    // Usa timeSlot ("segId|turno|aulaIdx") para identificar o segmento de forma confiável
+    const segPrefix = seg.id + '|';
     const profsSeg = state.teachers.filter(t => {
-      const hasSchedsInSeg = state.schedules.some(s => s.teacherId === t.id && segTurmas.has(s.turma));
-      const hasAnyScheds   = state.schedules.some(s => s.teacherId === t.id);
-      return hasSchedsInSeg || !hasAnyScheds;
+      const myScheds = state.schedules.filter(s => s.teacherId === t.id);
+      if (myScheds.length === 0) return true; // sem horário → exibe em todos os frames
+      return myScheds.some(s => s.timeSlot?.startsWith(segPrefix));
     }).sort((a, b) => a.name.localeCompare(b.name));
 
     const profBtns = profsSeg.map(t => {
