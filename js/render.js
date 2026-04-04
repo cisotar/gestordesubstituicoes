@@ -284,7 +284,6 @@ function tabSegments() {
           </div>
           <button class="btn-del" data-action="removeSegment" data-id="${seg.id}">✕</button>
         </div>
-        <div class="grade-list">${gradeRows || '<p class="no-grades">Nenhuma série. Adicione abaixo.</p>'}</div>
         <div class="add-grade-row">
           <div class="lbl" style="margin-bottom:6px">Adicionar série / ano</div>
           <div style="display:flex;gap:8px">
@@ -292,6 +291,7 @@ function tabSegments() {
             <button class="btn btn-dark" data-action="addGrade" data-seg="${seg.id}">Adicionar</button>
           </div>
         </div>
+        <div class="grade-list">${gradeRows || '<p class="no-grades">Nenhuma série cadastrada.</p>'}</div>
         ${totalTurmas > 0 ? `
           <div class="turmas-preview">
             <div class="lbl" style="margin-bottom:6px">Turmas cadastradas (${totalTurmas})</div>
@@ -306,15 +306,14 @@ function tabSegments() {
 
   return `
     <div>
-      <div class="seg-cards-grid">${segCards}</div>
-      </div>
-      <div class="card card-b" style="background:var(--surf2);margin-top:20px">
+      <div class="card card-b" style="background:var(--surf2);margin-bottom:20px">
         <h3 style="margin-bottom:12px;font-size:14px">Novo Segmento</h3>
         <div style="display:flex;gap:8px;align-items:center">
           <input class="inp" id="new-seg-name" placeholder="Ex: Educação Infantil" style="flex:1">
           <button class="btn btn-dark" data-action="addSegment">Adicionar</button>
         </div>
       </div>
+      <div class="seg-cards-grid">${segCards}</div>
     </div>`;
 }
 
@@ -543,14 +542,18 @@ function tabTeachers() {
         Sem horários cadastrados (${unassigned.length})
       </div>
       ${unassigned.map(t => {
-        const cv = colorOfTeacher(t);
+        const cv   = colorOfTeacher(t);
         const subs = teacherSubjectNames(t);
         return `
-          <div class="ti">
+          <div class="ti" style="flex-wrap:wrap;gap:8px">
             <span class="ti-dot" style="background:${cv.dt}"></span>
             <div style="flex:1;min-width:100px">
               <div class="ti-name">${h(t.name)}</div>
-              ${subs ? `<div style="font-size:11px;color:var(--t3)">${h(subs)}</div>` : ''}
+              ${subs ? `<div style="font-size:12px;color:var(--t2);font-weight:600;margin-top:2px">${h(subs)}</div>` : ''}
+              <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+                ${t.celular ? `<span class="contact-chip">📱 ${h(t.celular)}</span>` : ''}
+                ${t.email   ? `<span class="contact-chip">✉ ${h(t.email)}</span>`   : ''}
+              </div>
             </div>
             <button class="btn btn-ghost btn-xs" data-action="editTeacherSubjects" data-id="${t.id}">📚</button>
             <button class="btn btn-ghost btn-xs" data-action="editTeacher" data-id="${t.id}">✏️</button>

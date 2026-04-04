@@ -1327,6 +1327,25 @@ code {
 .home-aula-row:last-child { border-bottom: none; }
 .home-aula-row[data-home-action]:hover { background: var(--surf2); }
 .home-aula-row.home-aula-absent { background: #FFF0F0; border-radius: 5px; padding: 5px 4px; }
+.home-abs-del-btn {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(200,41,10,.12);
+  border: 1px solid rgba(200,41,10,.25);
+  color: var(--err);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background .12s, color .12s;
+  margin-top: 2px;
+}
+.home-abs-del-btn:hover { background: var(--err); color: #fff; }
 
 .home-aula-n {
   font-size: 10px;

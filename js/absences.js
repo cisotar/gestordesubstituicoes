@@ -231,6 +231,7 @@ export function assignSubstitute(absenceId, slotId, substituteId) {
 /** Remove uma ausência inteira */
 export function deleteAbsence(id) {
   state.absences = (state.absences || []).filter(a => a.id !== id);
+  import('./db.js').then(({ deleteDocById }) => deleteDocById('absences', id));
   _syncSubs();
   saveState();
 }
@@ -242,8 +243,10 @@ export function deleteAbsenceSlot(absenceId, slotId) {
   ab.slots = ab.slots.filter(s => s.id !== slotId);
   if (ab.slots.length === 0) {
     state.absences = state.absences.filter(a => a.id !== absenceId);
+    import('./db.js').then(({ deleteDocById }) => deleteDocById('absences', absenceId));
   } else {
     _updateStatus(absenceId);
+    import('./db.js').then(({ saveDoc }) => saveDoc('absences', ab));
   }
   _syncSubs();
   saveState();

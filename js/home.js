@@ -253,12 +253,27 @@ function _gridViewC(dates, mine, periodos, absenceSlots, subMap, teacherId, cv) 
           <div class="home-aula-estudo">hora de estudo</div>
         </div>`;
 
+      // Para o botão ✕ de remoção directa, precisamos do absenceId/slotId
+      let absId = null, sltId = null;
+      if (isAbs) {
+        const absEntry = (state.absences ?? []).find(a =>
+          a.teacherId === teacherId &&
+          a.slots.some(s => s.date === date && s.timeSlot === p.slot)
+        );
+        if (absEntry) {
+          const sl = absEntry.slots.find(s => s.date === date && s.timeSlot === p.slot);
+          absId = absEntry.id;
+          sltId = sl?.id ?? null;
+        }
+      }
+
       return `
         <div class="home-aula-row ${isAbs ? 'home-aula-absent' : ''}"
-          data-home-action="openDay" data-date="${date}" data-tid="${teacherId}"
-          style="cursor:pointer">
+          style="cursor:pointer;position:relative"
+          ${!isAbs ? `data-home-action="openDay" data-date="${date}" data-tid="${teacherId}"` : ''}>
           <span class="home-aula-n">${p.aulaIdx}ª</span>
-          <div style="flex:1;min-width:0">
+          <div style="flex:1;min-width:0" data-home-action="openDay"
+            data-date="${date}" data-tid="${teacherId}">
             <div style="font-weight:700;font-size:12px;
               color:${isAbs ? '#991B1B' : 'var(--t1)'};
               white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
@@ -274,6 +289,12 @@ function _gridViewC(dates, mine, periodos, absenceSlots, subMap, teacherId, cv) 
               ${subT ? `↳ ${h(subT.name)}` : '⚠ sem sub.'}
             </div>` : ''}
           </div>
+          ${isAbs && isAdminRole() && absId && sltId ? `
+            <button class="home-abs-del-btn"
+              data-home-action="clearAbsFromGrid"
+              data-abs="${absId}" data-slt="${sltId}"
+              data-date="${date}" data-tid="${teacherId}"
+              title="Remover falta">✕</button>` : ''}
         </div>`;
     }).join('');
 
@@ -955,6 +976,17 @@ export function handleHomeAction(action, el) {
     case 'thisWeek': {
       homeUI.weekOffset = 0;
       _refreshWeekGrid(homeUI.teacherId);
+      break;
+    }
+
+    case 'clearAbsFromGrid': {
+      const { abs: absenceId, slt: slotId, date, tid } = el.dataset;
+      if (!confirm('Remover esta falta?')) return;
+      import('./absences.js').then(({ deleteAbsenceSlot }) => {
+        deleteAbsenceSlot(absenceId, slotId);
+        updateNav();
+        _refreshWeekGrid(tid);
+      });
       break;
     }
   }
