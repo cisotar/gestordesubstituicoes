@@ -595,8 +595,12 @@ function tabSchedules() {
     const segTurmas = new Set(
       seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`))
     );
-    // Mostra TODOS os professores — incluindo os sem horário cadastrado ainda
-    const profsSeg = state.teachers.slice().sort((a, b) => a.name.localeCompare(b.name));
+    // Mostra professores com aulas neste segmento + professores sem nenhum horário ainda
+    const profsSeg = state.teachers.filter(t => {
+      const hasSchedsInSeg = state.schedules.some(s => s.teacherId === t.id && segTurmas.has(s.turma));
+      const hasAnyScheds   = state.schedules.some(s => s.teacherId === t.id);
+      return hasSchedsInSeg || !hasAnyScheds;
+    }).sort((a, b) => a.name.localeCompare(b.name));
 
     const profBtns = profsSeg.map(t => {
       const cv    = colorOfTeacher(t);
