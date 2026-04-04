@@ -1195,6 +1195,26 @@ code {
   vertical-align: middle;
 }
 
+/* Botões de modo / abas genéricas (Ausências, etc.) */
+.view-tab {
+  padding: 8px 18px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--bdr);
+  background: var(--surf);
+  font-family: 'Figtree', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t2);
+  cursor: pointer;
+  transition: all .15s;
+}
+.view-tab:hover { border-color: var(--bdr2); color: var(--t1); }
+.view-tab.on {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
 /* ═══ HOME PAGE ══════════════════════════════════════════════════════════════ */
 
 /* Frames EF/EM lado a lado na home */
@@ -1355,6 +1375,39 @@ code {
   margin-top: 2px;
 }
 .home-abs-del-btn:hover { background: var(--err); color: #fff; }
+
+/* Balões de mês na view Por Mês */
+.month-balloon {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--bdr);
+  background: var(--surf);
+  font-family: 'Figtree', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t2);
+  cursor: pointer;
+  transition: all .12s;
+  position: relative;
+}
+.month-balloon:hover { border-color: var(--bdr2); color: var(--t1); }
+.month-balloon.on {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+/* Ponto laranja indicando meses com ausências */
+.month-balloon.has-abs::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--err);
+  border: 1.5px solid var(--bg);
+}
 
 .home-aula-n {
   font-size: 10px;

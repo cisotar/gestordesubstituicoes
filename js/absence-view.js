@@ -50,13 +50,13 @@ export function renderAbsencePage() {
 
   const modeTabs = `
     <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap">
-      <button class="home-seg-tab ${absView.mode === 'teacher' ? 'on' : ''}"
+      <button class="view-tab ${absView.mode === 'teacher' ? 'on' : ''}"
         data-ab-action="setMode" data-mode="teacher">👤 Por Professor</button>
-      <button class="home-seg-tab ${absView.mode === 'day' ? 'on' : ''}"
+      <button class="view-tab ${absView.mode === 'day' ? 'on' : ''}"
         data-ab-action="setMode" data-mode="day">📅 Por Dia</button>
-      <button class="home-seg-tab ${absView.mode === 'week' ? 'on' : ''}"
+      <button class="view-tab ${absView.mode === 'week' ? 'on' : ''}"
         data-ab-action="setMode" data-mode="week">🗓 Por Semana</button>
-      <button class="home-seg-tab ${absView.mode === 'month' ? 'on' : ''}"
+      <button class="view-tab ${absView.mode === 'month' ? 'on' : ''}"
         data-ab-action="setMode" data-mode="month">📆 Por Mês</button>
     </div>`;
 
@@ -510,14 +510,34 @@ function _viewByMonth() {
   const month    = refDate.getMonth(); // 0-based
   const monthLabel = `${_MONTH_NAMES[month]} ${year}`;
 
+  // Datas com ausências para destaque nos balões
+  const datesWithAbs = new Set(
+    (state.absences ?? []).flatMap(ab => ab.slots.map(s => {
+      const d = parseDate(s.date);
+      return `${d.getFullYear()}-${d.getMonth()}`;
+    }))
+  );
+
+  const monthBalloons = _MONTH_NAMES.map((name, idx) => {
+    const isSel  = idx === month && year === refDate.getFullYear();
+    const hasAbs = datesWithAbs.has(`${year}-${idx}`);
+    const targetISO = formatISO(new Date(year, idx, 1));
+    return `
+      <button class="month-balloon ${isSel ? 'on' : ''} ${hasAbs ? 'has-abs' : ''}"
+        data-ab-action="selectMonth" data-date="${targetISO}">
+        ${name.slice(0, 3)}
+      </button>`;
+  }).join('');
+
   const monthPicker = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
-      <button class="btn btn-ghost" data-ab-action="changeMonth" data-dir="-1" style="font-size:18px;padding:4px 12px">‹</button>
-      <div style="font-weight:700;font-size:14px;min-width:160px;text-align:center;color:var(--t1)">
-        ${monthLabel}
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <button class="btn btn-ghost btn-xs" data-ab-action="changeMonth" data-dir="-1" style="font-size:16px;padding:2px 10px">‹</button>
+        <span style="font-weight:700;font-size:14px;color:var(--t1);min-width:40px;text-align:center">${year}</span>
+        <button class="btn btn-ghost btn-xs" data-ab-action="changeMonth" data-dir="1" style="font-size:16px;padding:2px 10px">›</button>
+        <button class="btn btn-ghost btn-xs" data-ab-action="changeMonth" data-dir="0" style="font-size:11px;margin-left:4px">Hoje</button>
       </div>
-      <button class="btn btn-ghost" data-ab-action="changeMonth" data-dir="1" style="font-size:18px;padding:4px 12px">›</button>
-      <button class="btn btn-ghost btn-xs" data-ab-action="changeMonth" data-dir="0" style="font-size:11px">Hoje</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${monthBalloons}</div>
     </div>`;
 
   const allSlots = (state.absences ?? []).flatMap(ab =>
@@ -706,13 +726,20 @@ export function handleAbsenceAction(action, el) {
       break;
     }
 
+    case 'selectMonth': {
+      absView.monthDate = el.dataset.date;
+      renderAbsencePage();
+      break;
+    }
+
     case 'changeMonth': {
       const dir = Number(el.dataset.dir);
       if (dir === 0) {
         absView.monthDate = null;
       } else {
         const refDate = absView.monthDate ? parseDate(absView.monthDate) : new Date();
-        const newDate = new Date(refDate.getFullYear(), refDate.getMonth() + dir, 1);
+        // dir ±1 aqui navega por ANO (os balões já fazem a seleção de mês)
+        const newDate = new Date(refDate.getFullYear() + dir, refDate.getMonth(), 1);
         absView.monthDate = formatISO(newDate);
       }
       renderAbsencePage();
