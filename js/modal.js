@@ -114,8 +114,8 @@ export function clearSubstitute(teacherId, day, slot) {
 
 // ─── Modal: Adicionar Professor ──────────────────────────────────────────────
 
-function _subjectCheckboxes(prefix) {
-  return state.areas.map(area => {
+function _subjectCheckboxes(inputName, checkedIds = null) {
+  function areaBlock(area) {
     const subs = state.subjects.filter(s => s.areaId === area.id);
     if (!subs.length) return '';
     const cv = COLOR_PALETTE[area.colorIdx % COLOR_PALETTE.length];
@@ -126,17 +126,38 @@ function _subjectCheckboxes(prefix) {
           ${h(area.name)}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${subs.map(s => `
-            <label style="display:flex;align-items:center;gap:6px;padding:5px 10px;
+          ${subs.map(s => {
+            const isChecked = checkedIds ? checkedIds.has(s.id) : false;
+            return `<label style="display:flex;align-items:center;gap:6px;padding:5px 10px;
               border-radius:6px;border:1.5px solid var(--bdr);cursor:pointer;font-size:13px;
               color:var(--t1)">
-              <input type="checkbox" name="${prefix}" value="${s.id}"
+              <input type="checkbox" name="${inputName}" value="${s.id}"
+                ${isChecked ? 'checked' : ''}
                 style="accent-color:${cv.dt};width:14px;height:14px">
               ${h(s.name)}
-            </label>`).join('')}
+            </label>`;
+          }).join('')}
         </div>
       </div>`;
-  }).join('');
+  }
+
+  let html = '';
+
+  // Seções por segmento
+  state.segments.forEach(seg => {
+    const segAreas = state.areas.filter(a => (a.segmentIds ?? []).includes(seg.id));
+    if (!segAreas.some(a => state.subjects.some(s => s.areaId === a.id))) return;
+    html += `<div style="font-size:11px;font-weight:700;color:var(--accent);
+      text-transform:uppercase;letter-spacing:.05em;padding:4px 0;margin:8px 0 6px;
+      border-bottom:1px solid var(--bdr)">${h(seg.name)}</div>`;
+    html += segAreas.map(areaBlock).join('');
+  });
+
+  // Áreas legado (sem segmentIds)
+  const legacy = state.areas.filter(a => !(a.segmentIds?.length > 0));
+  html += legacy.map(areaBlock).join('');
+
+  return html;
 }
 
 export function openAddTeacherModal() {
@@ -234,38 +255,11 @@ export function saveAddTeachersBulkModal() {
 export function openTeacherSubjects(teacherId) {
   const teacher = state.teachers.find(t => t.id === teacherId);
   if (!teacher) return;
-  const cv = colorOfTeacher(teacher);
 
-  // Agrupar matérias por área
-  const grouped = state.areas.map(area => {
-    const subs = state.subjects.filter(s => s.areaId === area.id);
-    if (subs.length === 0) return '';
-    const areaColor = COLOR_PALETTE[area.colorIdx % COLOR_PALETTE.length];
-    return `
-      <div style="margin-bottom:14px">
-        <div style="font-size:11px;font-weight:700;color:${areaColor.tx};background:${areaColor.tg};
-          padding:4px 10px;border-radius:4px;margin-bottom:6px;display:inline-block">
-          ${h(area.name)}
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${subs.map(s => {
-            const checked = teacher.subjectIds?.includes(s.id) ? 'checked' : '';
-            return `<label style="display:flex;align-items:center;gap:6px;padding:6px 10px;
-              border-radius:6px;border:1.5px solid ${checked ? areaColor.bd : 'var(--bdr)'};
-              background:${checked ? areaColor.bg : 'var(--surf)'};cursor:pointer;font-size:13px">
-              <input type="checkbox" value="${s.id}" ${checked}
-                style="accent-color:${areaColor.dt};width:14px;height:14px">
-              ${h(s.name)}
-            </label>`;
-          }).join('')}
-        </div>
-      </div>`;
-  }).join('');
-
-  const empty = state.subjects.length === 0
-    ? `<p style="color:var(--t3);padding:24px 0;text-align:center">
-        Cadastre matérias antes de associar.
-       </p>` : '';
+  const checkedIds = new Set(teacher.subjectIds ?? []);
+  const subjHtml = state.subjects.length > 0
+    ? _subjectCheckboxes('ts-subj', checkedIds)
+    : `<p style="color:var(--t3);padding:24px 0;text-align:center">Cadastre matérias antes de associar.</p>`;
 
   show(`
     <div class="m-hdr">
@@ -276,7 +270,7 @@ export function openTeacherSubjects(teacherId) {
       <button class="m-close" data-action="closeModal">×</button>
     </div>
     <div style="max-height:55vh;overflow-y:auto;margin-bottom:16px">
-      ${grouped || empty}
+      ${subjHtml}
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-dark" style="flex:1"
