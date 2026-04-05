@@ -607,8 +607,11 @@ function tabTeachers() {
     <div class="tab-full-width">
       <!-- Botões de cadastro -->
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-        <button class="btn btn-dark" data-action="openAddTeacher">+ Adicionar Professor</button>
-        <button class="btn btn-ghost" data-action="openAddTeachersBulk">Adicionar em Bloco</button>
+        ${state.segments.map(seg => {
+          const abbr = seg.name.split(/\s+/).map(w => w[0].toUpperCase()).join('');
+          return `<button class="btn btn-dark" data-action="openAddTeacher" data-seg="${seg.id}">+ Prof ${abbr}</button>`;
+        }).join('')}
+        <button class="btn btn-ghost" data-action="openAddTeachersBulk">+ Em Bloco</button>
         ${state.teachers.length > 0 ? `<button class="btn btn-ghost" style="color:var(--err);margin-left:auto"
           data-action="clearAllTeachers">🗑 Limpar registros</button>` : ''}
       </div>

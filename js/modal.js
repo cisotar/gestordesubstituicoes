@@ -114,7 +114,8 @@ export function clearSubstitute(teacherId, day, slot) {
 
 // ─── Modal: Adicionar Professor ──────────────────────────────────────────────
 
-function _subjectCheckboxes(inputName, checkedIds = null) {
+// segFilter: string[] | null — se fornecido, exibe apenas esses segmentos (sem seção legado)
+function _subjectCheckboxes(inputName, checkedIds = null, segFilter = null) {
   function areaBlock(area) {
     const subs = state.subjects.filter(s => s.areaId === area.id);
     if (!subs.length) return '';
@@ -142,9 +143,11 @@ function _subjectCheckboxes(inputName, checkedIds = null) {
   }
 
   let html = '';
+  const segsToShow = segFilter
+    ? state.segments.filter(s => segFilter.includes(s.id))
+    : state.segments;
 
-  // Seções por segmento
-  state.segments.forEach(seg => {
+  segsToShow.forEach(seg => {
     const segAreas = state.areas.filter(a => (a.segmentIds ?? []).includes(seg.id));
     if (!segAreas.some(a => state.subjects.some(s => s.areaId === a.id))) return;
     html += `<div style="font-size:11px;font-weight:700;color:var(--accent);
@@ -153,22 +156,23 @@ function _subjectCheckboxes(inputName, checkedIds = null) {
     html += segAreas.map(areaBlock).join('');
   });
 
-  // Áreas legado (sem segmentIds)
-  const legacy = state.areas.filter(a => !(a.segmentIds?.length > 0));
-  html += legacy.map(areaBlock).join('');
+  // Áreas legado (sem segmentIds) — só quando não há filtro de segmento
+  if (!segFilter) {
+    const legacy = state.areas.filter(a => !(a.segmentIds?.length > 0));
+    html += legacy.map(areaBlock).join('');
+  }
 
   return html;
 }
 
-export function openAddTeacherModal() {
-  const subjSection = state.subjects.length > 0 ? `
-    <div class="fld">
-      <label class="lbl">Matérias</label>
-      <div style="max-height:200px;overflow-y:auto;padding:4px 0;border:1px solid var(--bdr);
-        border-radius:var(--r);padding:10px">
-        ${_subjectCheckboxes('new-t-subj')}
-      </div>
-    </div>` : '';
+export function openAddTeacherModal(preSegId = null) {
+  const segChecks = state.segments.map(seg => `
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;
+      cursor:pointer;padding:4px 0;user-select:none">
+      <input type="checkbox" name="new-t-seg" value="${seg.id}"
+        ${seg.id === preSegId ? 'checked' : ''}>
+      ${h(seg.name)}
+    </label>`).join('');
 
   show(`
     <div class="m-hdr">
@@ -190,13 +194,43 @@ export function openAddTeacherModal() {
           <input class="inp" id="new-t-email" type="email" placeholder="prof@escola.edu.br">
         </div>
       </div>
-      ${subjSection}
+      <div class="fld">
+        <label class="lbl">Nível de ensino</label>
+        <div style="margin-top:4px">${segChecks}</div>
+      </div>
+      <div class="fld" id="new-t-subj-wrap" style="display:none">
+        <label class="lbl">Matérias</label>
+        <div id="new-t-subj-list"
+          style="max-height:220px;overflow-y:auto;border:1px solid var(--bdr);
+            border-radius:var(--r);padding:10px;margin-top:6px"></div>
+      </div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-dark" style="flex:1" data-action="saveAddTeacher">Adicionar</button>
       <button class="btn btn-ghost" data-action="closeModal">Cancelar</button>
     </div>`);
+
   document.getElementById('new-t-name')?.focus();
+
+  const selSubjIds = new Set();
+
+  function refreshSubjList() {
+    const segs = [...document.querySelectorAll('[name="new-t-seg"]:checked')].map(cb => cb.value);
+    const wrap = document.getElementById('new-t-subj-wrap');
+    const list = document.getElementById('new-t-subj-list');
+    if (!wrap || !list) return;
+    document.querySelectorAll('[name="new-t-subj"]').forEach(cb => {
+      if (cb.checked) selSubjIds.add(cb.value);
+      else            selSubjIds.delete(cb.value);
+    });
+    if (!segs.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    list.innerHTML = _subjectCheckboxes('new-t-subj', selSubjIds, segs)
+      || `<p style="font-size:12px;color:var(--t3)">Nenhuma matéria cadastrada para os níveis selecionados.</p>`;
+  }
+
+  document.querySelectorAll('[name="new-t-seg"]').forEach(cb => cb.addEventListener('change', refreshSubjList));
+  if (preSegId) refreshSubjList();
 }
 
 export function saveAddTeacherModal() {
@@ -218,11 +252,21 @@ export function saveAddTeacherModal() {
 
 // ─── Modal: Adicionar em Bloco ────────────────────────────────────────────────
 
-export function openAddTeachersBulkModal() {
+export function openAddTeachersBulkModal(preSegId = null) {
+  const segOpts = [
+    `<option value="">— qualquer segmento —</option>`,
+    ...state.segments.map(s =>
+      `<option value="${s.id}" ${s.id === preSegId ? 'selected' : ''}>${h(s.name)}</option>`)
+  ].join('');
+
   show(`
     <div class="m-hdr">
       <h3 style="font-size:17px">Adicionar em Bloco</h3>
       <button class="m-close" data-action="closeModal">×</button>
+    </div>
+    <div class="fld" style="margin-bottom:12px">
+      <label class="lbl">Segmento (para resolver nomes de matérias)</label>
+      <select class="inp" id="bulk-t-seg">${segOpts}</select>
     </div>
     <p style="font-size:13px;color:var(--t1);margin-bottom:12px">
       Um professor por linha. Campos separados por ponto e vírgula:<br>
@@ -242,9 +286,10 @@ export function openAddTeachersBulkModal() {
 }
 
 export function saveAddTeachersBulkModal() {
-  const text = document.getElementById('bulk-t-text')?.value ?? '';
+  const text  = document.getElementById('bulk-t-text')?.value ?? '';
+  const segId = document.getElementById('bulk-t-seg')?.value  || null;
   import('./actions.js').then(({ addTeachersBulk }) => {
-    const n = addTeachersBulk(text);
+    const n = addTeachersBulk(text, segId);
     closeModal();
     if (n > 0) import('./toast.js').then(({ toast }) => toast(`${n} professor${n !== 1 ? 'es' : ''} adicionado${n !== 1 ? 's' : ''}`, 'ok'));
   });

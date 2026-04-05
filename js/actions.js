@@ -156,7 +156,7 @@ export function removeSubject(id) {
 
 // ─── Professores ─────────────────────────────────────────────────────────────
 
-export function addTeachersBulk(rawText) {
+export function addTeachersBulk(rawText, segmentId = null) {
   // Formato por linha: nome;celular;email;matéria1,matéria2
   const lines = rawText.split('\n').map(s => s.trim()).filter(Boolean);
   let added = 0;
@@ -168,9 +168,17 @@ export function addTeachersBulk(rawText) {
     const celular = parts[1] ?? '';
     const email   = parts[2] ?? '';
     const subjNames = parts[3] ? parts[3].split(',').map(s => s.trim()).filter(Boolean) : [];
-    const subjectIds = subjNames
-      .map(sn => state.subjects.find(s => s.name.toLowerCase() === sn.toLowerCase())?.id)
-      .filter(Boolean);
+    const subjectIds = subjNames.flatMap(sn => {
+      const matches = state.subjects.filter(s => s.name.toLowerCase() === sn.toLowerCase());
+      if (!segmentId || matches.length <= 1) return matches.map(s => s.id);
+      // Com segmento definido, prefere matérias do segmento; cai no geral se não encontrar
+      const filtered = matches.filter(s => {
+        const area = state.areas.find(a => a.id === s.areaId);
+        const aSegs = area?.segmentIds ?? [];
+        return aSegs.length === 0 || aSegs.includes(segmentId);
+      });
+      return (filtered.length > 0 ? filtered : matches).map(s => s.id);
+    });
     state.teachers.push({ id: uid(), name, subjectIds, email, whatsapp: '', celular });
     added++;
   });
@@ -226,38 +234,40 @@ export function clearAllTeachers() {
   renderSettings();
 }
 
-export function saveTeacherSubjects(teacherId, subjectIds) {
-  const teacher = state.teachers.find(t => t.id === teacherId);
-  if (!teacher) return;
+/** Propaga troca de matérias nos horários do professor.
+ * Regras: 1 removida + 1 adicionada → troca direta; só 1 restante → substitui todas; ambíguo → null */
+function _applySubjectSwap(teacher, newSubjectIds) {
   const oldIds     = teacher.subjectIds ?? [];
-  const removedIds = oldIds.filter(id => !subjectIds.includes(id));
-  const addedIds   = subjectIds.filter(id => !oldIds.includes(id));
-  teacher.subjectIds = subjectIds;
-  // Propaga mudança para os horários com matéria removida:
-  // — troca 1-para-1: 1 removida + 1 adicionada → substitui diretamente
-  // — só 1 matéria final → atribui a todos os horários órfãos
-  // — caso ambíguo → limpa para null
+  const removedIds = oldIds.filter(id => !newSubjectIds.includes(id));
+  const addedIds   = newSubjectIds.filter(id => !oldIds.includes(id));
+  teacher.subjectIds = newSubjectIds;
   if (removedIds.length) {
     const newSubjectId =
       (removedIds.length === 1 && addedIds.length === 1) ? addedIds[0] :
-      subjectIds.length === 1 ? subjectIds[0] : null;
+      newSubjectIds.length === 1 ? newSubjectIds[0] : null;
     state.schedules.forEach(s => {
-      if (s.teacherId === teacherId && removedIds.includes(s.subjectId)) {
+      if (s.teacherId === teacher.id && removedIds.includes(s.subjectId)) {
         s.subjectId = newSubjectId;
       }
     });
   }
+}
+
+export function saveTeacherSubjects(teacherId, subjectIds) {
+  const teacher = state.teachers.find(t => t.id === teacherId);
+  if (!teacher) return;
+  _applySubjectSwap(teacher, subjectIds);
   saveState('Alterações salvas'); renderSettings();
 }
 
-/** Salva os dados de contato de um professor */
+/** Salva dados de contato e/ou matérias do professor com propagação de troca nos horários */
 export function saveTeacherContacts(teacherId, { email, whatsapp, celular, subjectIds }) {
   const teacher = state.teachers.find(t => t.id === teacherId);
   if (!teacher) return;
   teacher.email      = email      ?? teacher.email      ?? '';
   teacher.whatsapp   = whatsapp   ?? teacher.whatsapp   ?? '';
   teacher.celular    = celular    ?? teacher.celular    ?? '';
-  if (subjectIds !== undefined) teacher.subjectIds = subjectIds;
+  if (subjectIds !== undefined) _applySubjectSwap(teacher, subjectIds);
   saveState('Alterações salvas'); renderSettings();
 }
 

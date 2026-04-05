@@ -142,7 +142,7 @@ const ACTION_MAP = {
   removeSubject:   el => removeSubject(el.dataset.id),
 
   // Professores
-  openAddTeacher:      ()  => openAddTeacherModal(),
+  openAddTeacher:      el  => openAddTeacherModal(el.dataset.seg ?? null),
   saveAddTeacher:      ()  => saveAddTeacherModal(),
   openAddTeachersBulk: ()  => openAddTeachersBulkModal(),
   saveAddTeachersBulk: ()  => saveAddTeachersBulkModal(),
