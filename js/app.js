@@ -9,9 +9,9 @@
  */
 
 import { loadFromFirestore }         from './db.js';
-import { initAuth }                  from './auth.js';
+import { initAuth, authState }       from './auth.js';
 import { registerEvents }            from './events.js';
-import { updateNav }                 from './nav.js';
+import { navigate, updateNav }       from './nav.js';
 import { renderHome }                from './home.js';
 import { IS_LOCAL, dev, applyDevAuth, mountDevPanel } from './devmode.js';
 
@@ -35,7 +35,11 @@ try {
 
 registerEvents();
 updateNav();
-renderHome();
+if (authState.role === 'pending') {
+  navigate('pending');
+} else {
+  renderHome();
+}
 setLoadingVisible(false);
 
 // Painel dev só aparece em localhost

@@ -12,7 +12,8 @@ import { signInWithPopup, signOut,
          onAuthStateChanged }     from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { isAdmin, addAdmin, listAdmins, removeAdmin,
          getTeacherByEmail, requestTeacherAccess,
-         listPendingTeachers }    from './db.js';
+         listPendingTeachers, updatePendingTeacher } from './db.js';
+import { state }                  from './state.js';
 import { h }                      from './helpers.js';
 
 // ─── Estado global ────────────────────────────────────────────────────────────
@@ -226,18 +227,25 @@ export async function openPendingManager() {
   }
   _updatePendingBadge();
 
-  const rows = pending.map(p => `
+  const rows = pending.map(p => {
+    const subjNames = (p.subjectIds ?? [])
+      .map(sid => state.subjects.find(s => s.id === sid)?.name)
+      .filter(Boolean).join(', ');
+    return `
     <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bdr)">
       ${p.photoURL
         ? `<img src="${p.photoURL}" style="width:36px;height:36px;border-radius:50%">`
-        : `<div style="width:36px;height:36px;border-radius:50%;background:var(--surf2);display:flex;align-items:center;justify-content:center;font-weight:700">${p.name.charAt(0)}</div>`}
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:14px">${h(p.name)}</div>
+        : `<div style="width:36px;height:36px;border-radius:50%;background:var(--surf2);display:flex;align-items:center;justify-content:center;font-weight:700">${(p.name || '?').charAt(0)}</div>`}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:14px">${h(p.name || '(sem nome)')}</div>
         <div style="font-size:12px;color:var(--t2)">${h(p.email)}</div>
+        ${p.celular ? `<div style="font-size:11px;color:var(--t3)">📱 ${h(p.celular)}</div>` : ''}
+        ${subjNames ? `<div style="font-size:11px;color:var(--t3);margin-top:2px">📚 ${h(subjNames)}</div>` : ''}
       </div>
       <button class="btn btn-dark btn-sm" data-approve="${p.id}">✓ Aprovar</button>
       <button class="btn-del" data-reject="${p.id}">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   body.innerHTML = `
     <div class="m-hdr">
@@ -265,6 +273,76 @@ export async function openPendingManager() {
       await rejectTeacher(btn.dataset.reject);
       openPendingManager();
     });
+  });
+}
+
+// ─── Página: Cadastro pendente ────────────────────────────────────────────────
+
+export function renderPendingPage() {
+  const el = document.getElementById('pg-pending');
+  if (!el) return;
+
+  const subjects = state.subjects ?? [];
+  const subjChecks = subjects.length
+    ? subjects.map(s => `
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;
+          cursor:pointer;padding:3px 0;user-select:none">
+          <input type="checkbox" name="pend-subj" value="${s.id}">
+          ${h(s.name)}
+        </label>`).join('')
+    : `<p style="font-size:12px;color:var(--t3)">Nenhuma matéria cadastrada ainda. O admin poderá associar após a aprovação.</p>`;
+
+  el.innerHTML = `
+    <div style="max-width:480px;margin:48px auto;padding:0 16px">
+      <div class="card card-b" style="padding:32px">
+        <div style="font-size:32px;margin-bottom:12px;text-align:center">👋</div>
+        <h2 style="margin:0 0 6px;text-align:center">Bem-vindo!</h2>
+        <p style="color:var(--t2);margin:0 0 24px;text-align:center;font-size:14px">
+          Preencha seus dados para que o administrador identifique e aprove seu cadastro.
+        </p>
+
+        <div class="fld">
+          <label class="lbl">Nome completo</label>
+          <input class="inp" id="pend-name"
+            value="${h(authState.user?.displayName ?? '')}" placeholder="Seu nome completo">
+        </div>
+        <div class="fld">
+          <label class="lbl">Celular / WhatsApp</label>
+          <input class="inp" id="pend-celular" type="tel" placeholder="(11) 99999-9999">
+        </div>
+        <div class="fld" style="margin-bottom:24px">
+          <label class="lbl">Matérias que você leciona</label>
+          <div style="margin-top:6px;max-height:200px;overflow-y:auto">${subjChecks}</div>
+        </div>
+
+        <button class="btn btn-dark" style="width:100%" id="btn-pend-submit">
+          Enviar dados
+        </button>
+        <div id="pend-msg" style="display:none;margin-top:14px;text-align:center;
+          color:#047857;font-weight:600;font-size:13px"></div>
+      </div>
+    </div>`;
+
+  document.getElementById('btn-pend-submit')?.addEventListener('click', async () => {
+    const name       = document.getElementById('pend-name')?.value?.trim();
+    const celular    = document.getElementById('pend-celular')?.value?.trim();
+    const subjectIds = [...document.querySelectorAll('[name="pend-subj"]:checked')]
+      .map(el => el.value);
+
+    if (!name) { alert('Informe seu nome completo.'); return; }
+
+    const btn = document.getElementById('btn-pend-submit');
+    const msg = document.getElementById('pend-msg');
+    if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+
+    try {
+      await updatePendingTeacher(authState.user.email, { name, celular, subjectIds });
+      if (msg) { msg.textContent = '✓ Dados enviados! Aguarde a aprovação do administrador.'; msg.style.display = ''; }
+      if (btn) btn.textContent = 'Enviado';
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Enviar dados'; }
+      alert('Erro ao enviar dados. Tente novamente.');
+    }
   });
 }
 

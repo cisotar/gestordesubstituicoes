@@ -59,6 +59,8 @@ export function navigate(page, tid = null) {
     renderAbsenceList();
   } else if (page === 'my-schedule') {
     import('./my-schedule.js').then(({ renderMySchedule }) => renderMySchedule());
+  } else if (page === 'pending') {
+    import('./auth.js').then(({ renderPendingPage }) => renderPendingPage());
   } else {
     renderPage();
   }

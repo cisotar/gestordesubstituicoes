@@ -265,20 +265,22 @@ export async function approveTeacher(pendingId) {
   );
 
   if (!teacher) {
-    // Cria novo professor aprovado
+    // Cria novo professor aprovado com dados preenchidos pelo pendente
     teacher = {
       id:          uid(),
       name:        data.name,
       email:       data.email,
       whatsapp:    '',
-      celular:     '',
-      subjectIds:  [],
+      celular:     data.celular     ?? '',
+      subjectIds:  data.subjectIds  ?? [],
       status:      'approved',
     };
     state.teachers.push(teacher);
   } else {
-    teacher.status = 'approved';
-    teacher.name   = teacher.name || data.name;
+    teacher.status     = 'approved';
+    teacher.name       = teacher.name || data.name;
+    teacher.celular    = teacher.celular    || data.celular    || '';
+    teacher.subjectIds = teacher.subjectIds?.length ? teacher.subjectIds : (data.subjectIds ?? []);
   }
 
   // Persiste no Firestore
@@ -287,6 +289,12 @@ export async function approveTeacher(pendingId) {
 
   const { saveState } = await import('./state.js');
   saveState();
+}
+
+/** Atualiza dados de um professor pendente (nome, celular, subjectIds) */
+export async function updatePendingTeacher(email, data) {
+  const key = _emailKey(email);
+  await setDoc(doc(db, 'pending_teachers', key), data, { merge: true });
 }
 
 /** Rejeita e remove um professor pendente */

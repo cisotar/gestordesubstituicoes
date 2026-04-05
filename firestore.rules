@@ -4,16 +4,36 @@ service cloud.firestore {
 
     // ── Leitura pública ─────────────────────────────────────────────────────
     match /meta/{doc}      { allow read: if true; allow write: if isAdmin(); }
-    match /teachers/{doc}  { allow read: if true; allow write: if isAdmin(); }
     match /schedules/{doc} { allow read: if true; allow write: if isAdmin(); }
     match /absences/{doc}  { allow read: if true; allow write: if isAdmin(); }
     match /history/{doc}   { allow read: if true; allow write: if isAdmin(); }
 
+    // ── Professores: leitura pública; admin escreve; professor edita próprio perfil ──
+    match /teachers/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+      allow update: if request.auth != null
+        && resource.data.email.lower() == request.auth.token.email.lower()
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['celular', 'whatsapp', 'subjectIds']);
+    }
+
+    // ── Pendentes: admin lê/escreve; professor acessa apenas o próprio doc ──
+    match /pending_teachers/{docId} {
+      allow read, write: if isAdmin()
+        || (request.auth != null && docId == emailToKey(request.auth.token.email));
+    }
+
     // ── Somente admins ───────────────────────────────────────────────────────
     match /admins/{doc}    { allow read, write: if isAdmin(); }
 
-    // ── Função auxiliar ──────────────────────────────────────────────────────
-    // ── Função de verificação ────────────────────────────────────────────────
+    // ── Funções auxiliares ───────────────────────────────────────────────────
+    function emailToKey(email) {
+      return email.lower()
+        .replace('.', '_').replace('#', '_').replace('$', '_')
+        .replace('/', '_').replace('[', '_').replace(']', '_');
+    }
+
     function isAdmin() {
       return request.auth != null && (
         // Admin fixo — primeiro acesso, antes de cadastrar no Firestore
@@ -21,16 +41,7 @@ service cloud.firestore {
         request.auth.token.email == 'tarciso@prof.educacao.sp.gov.br' ||
         request.auth.token.email == 'fernandamarquesi@prof.educacao.sp.gov.br' ||
         // Demais admins cadastrados na coleção /admins
-        exists(/databases/$(database)/documents/admins/$(
-          request.auth.token.email
-            .lower()
-            .replace('.', '_')
-            .replace('#', '_')
-            .replace('$', '_')
-            .replace('/', '_')
-            .replace('[', '_')
-            .replace(']', '_')
-        ))
+        exists(/databases/$(database)/documents/admins/$(emailToKey(request.auth.token.email)))
       );
     }
   }

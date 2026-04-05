@@ -251,12 +251,13 @@ export function saveTeacherSubjects(teacherId, subjectIds) {
 }
 
 /** Salva os dados de contato de um professor */
-export function saveTeacherContacts(teacherId, { email, whatsapp, celular }) {
+export function saveTeacherContacts(teacherId, { email, whatsapp, celular, subjectIds }) {
   const teacher = state.teachers.find(t => t.id === teacherId);
   if (!teacher) return;
-  teacher.email    = email    ?? teacher.email    ?? '';
-  teacher.whatsapp = whatsapp ?? teacher.whatsapp ?? '';
-  teacher.celular  = celular  ?? teacher.celular  ?? '';
+  teacher.email      = email      ?? teacher.email      ?? '';
+  teacher.whatsapp   = whatsapp   ?? teacher.whatsapp   ?? '';
+  teacher.celular    = celular    ?? teacher.celular    ?? '';
+  if (subjectIds !== undefined) teacher.subjectIds = subjectIds;
   saveState('Alterações salvas'); renderSettings();
 }
 
