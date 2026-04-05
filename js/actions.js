@@ -293,13 +293,13 @@ export function removeSchedule(id) {
  * Adiciona uma nova área vazia.
  * Chamado pelo botão na aba Disciplinas.
  */
-export function addAreaDisc(name) {
+export function addAreaDisc(name, segmentIds = []) {
   if (!name?.trim()) return;
   if (state.areas.find(a => a.name.toLowerCase() === name.trim().toLowerCase())) {
     toast('Área já existe.', 'warn'); return;
   }
   const colorIdx = state.areas.length % 9;
-  state.areas.push({ id: uid(), name: name.trim(), colorIdx });
+  state.areas.push({ id: uid(), name: name.trim(), colorIdx, segmentIds });
   saveState(`Área '${name.trim()}' criada`);
   import('./render.js').then(({ renderSettings }) => renderSettings());
 }

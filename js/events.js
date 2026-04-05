@@ -242,7 +242,14 @@ export function registerEvents() {
     const discEl = e.target.closest('[data-disc-action]');
     if (discEl) {
       const a = discEl.dataset.discAction;
-      if (a === 'addArea')    { addAreaDisc(document.getElementById('new-area-name')?.value?.trim()); document.getElementById('new-area-name').value = ''; return; }
+      if (a === 'addArea') {
+        const segId  = discEl.dataset.seg;
+        const inputId = segId ? `new-area-name-${segId}` : 'new-area-name';
+        const nameEl = document.getElementById(inputId);
+        addAreaDisc(nameEl?.value?.trim(), segId ? [segId] : []);
+        if (nameEl) nameEl.value = '';
+        return;
+      }
       if (a === 'saveArea')   { saveAreaBlock(discEl.dataset.id); return; }
       if (a === 'removeArea') { removeAreaDisc(discEl.dataset.id); return; }
     }

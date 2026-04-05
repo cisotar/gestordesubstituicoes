@@ -410,7 +410,7 @@ function tabPeriods() {
 // ── Tab: Disciplinas (Áreas + Matérias unificadas) ────────────────────────────
 
 function tabDisciplines() {
-  const blocks = state.areas.map(area => {
+  function areaBlock(area) {
     const cv   = COLOR_PALETTE[area.colorIdx % COLOR_PALETTE.length];
     const subs = state.subjects.filter(s => s.areaId === area.id);
     const txt  = subs.map(s => s.name).join('\n');
@@ -429,9 +429,7 @@ function tabDisciplines() {
           <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
             <span style="font-size:12px;color:var(--t3)">${subs.length} disciplina${subs.length !== 1 ? 's' : ''}</span>
             <button class="btn btn-dark btn-xs"
-              data-disc-action="saveArea" data-id="${area.id}">
-              Salvar
-            </button>
+              data-disc-action="saveArea" data-id="${area.id}">Salvar</button>
             <button class="btn-del"
               data-disc-action="removeArea" data-id="${area.id}">✕</button>
           </div>
@@ -446,24 +444,50 @@ function tabDisciplines() {
             >${h(txt)}</textarea>
         </div>
       </div>`;
+  }
+
+  // Colunas por segmento
+  const segCols = state.segments.map(seg => {
+    const segAreas  = state.areas.filter(a => (a.segmentIds ?? []).includes(seg.id));
+    const blocksHtml = segAreas.length
+      ? segAreas.map(areaBlock).join('')
+      : `<div style="color:var(--t3);font-size:13px;padding:12px 0">Nenhuma área cadastrada.</div>`;
+    return `
+      <div>
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;
+          padding-bottom:8px;border-bottom:2px solid var(--bdr)">${h(seg.name)}</h3>
+        ${blocksHtml}
+        <div class="card card-b" style="margin-top:12px;padding:12px">
+          <div style="display:flex;gap:8px">
+            <input class="inp" id="new-area-name-${seg.id}"
+              placeholder="Nova área…" style="flex:1;font-size:13px">
+            <button class="btn btn-dark btn-sm"
+              data-disc-action="addArea" data-seg="${seg.id}">＋</button>
+          </div>
+        </div>
+      </div>`;
   }).join('');
+
+  // Áreas legado (sem segmentIds definidos)
+  const legacyAreas  = state.areas.filter(a => !(a.segmentIds?.length > 0));
+  const legacyHtml   = legacyAreas.length
+    ? `<div style="margin-top:24px">
+        <h3 style="font-size:13px;font-weight:700;color:var(--t3);
+          margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">
+          Sem segmento (legado)
+        </h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+          ${legacyAreas.map(areaBlock).join('')}
+        </div>
+      </div>`
+    : '';
 
   return `
     <div class="tab-full-width">
-      <!-- Nova área -->
-      <div class="card card-b" style="margin-bottom:20px">
-        <h3 style="margin-bottom:10px;font-size:14px">Nova área do conhecimento</h3>
-        <div style="display:flex;gap:8px">
-          <input class="inp" id="new-area-name" placeholder="Ex: Ciências Humanas" style="flex:1"
-            data-enter="addAreaDisc">
-          <button class="btn btn-dark" data-disc-action="addArea">Adicionar</button>
-        </div>
+      <div style="display:grid;grid-template-columns:repeat(${state.segments.length},1fr);gap:20px">
+        ${segCols}
       </div>
-
-      <!-- Blocos de áreas -->
-      <div id="disc-list" class="disc-list-grid disc-list-full">
-        ${blocks || '<div class="empty"><div class="empty-ico">📚</div><div class="empty-ttl">Nenhuma área cadastrada</div><div class="empty-dsc">Adicione uma área acima para começar.</div></div>'}
-      </div>
+      ${legacyHtml}
     </div>`;
 }
 

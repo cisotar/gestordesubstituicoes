@@ -298,35 +298,12 @@ export function renderPendingPage() {
   const el = document.getElementById('pg-pending');
   if (!el) return;
 
-  const subjects = state.subjects ?? [];
-  const areas    = state.areas    ?? [];
-
-  let subjChecks;
-  if (!subjects.length) {
-    subjChecks = `<p style="font-size:12px;color:var(--t3)">Nenhuma matéria cadastrada ainda. O admin poderá associar após a aprovação.</p>`;
-  } else {
-    // Agrupa por área; matérias sem área ficam num grupo genérico
-    const byArea = {};
-    subjects.forEach(s => {
-      const key = s.areaId ?? '__sem_area__';
-      (byArea[key] ??= []).push(s);
-    });
-    subjChecks = Object.entries(byArea).map(([areaId, subs]) => {
-      const area = areas.find(a => a.id === areaId);
-      const header = area
-        ? `<div style="font-size:11px;font-weight:700;color:var(--t3);
-            text-transform:uppercase;letter-spacing:.05em;
-            margin:10px 0 4px">${h(area.name)}</div>`
-        : '';
-      const checks = subs.map(s => `
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;
-          cursor:pointer;padding:3px 0;user-select:none">
-          <input type="checkbox" name="pend-subj" value="${s.id}">
-          ${h(s.name)}
-        </label>`).join('');
-      return header + checks;
-    }).join('');
-  }
+  const segChecks = state.segments.map(seg => `
+    <label style="display:flex;align-items:center;gap:6px;font-size:14px;
+      cursor:pointer;padding:4px 0;user-select:none">
+      <input type="checkbox" name="pend-seg" value="${seg.id}">
+      ${h(seg.name)}
+    </label>`).join('');
 
   el.innerHTML = `
     <div style="max-width:480px;margin:48px auto;padding:0 16px">
@@ -346,9 +323,14 @@ export function renderPendingPage() {
           <label class="lbl">Celular / WhatsApp</label>
           <input class="inp" id="pend-celular" type="tel" placeholder="(11) 99999-9999">
         </div>
-        <div class="fld" style="margin-bottom:24px">
+        <div class="fld">
+          <label class="lbl">Em qual nível você leciona?</label>
+          <div style="margin-top:4px">${segChecks}</div>
+        </div>
+        <div class="fld" id="pend-subj-wrap" style="display:none;margin-bottom:24px">
           <label class="lbl">Matérias que você leciona</label>
-          <div style="margin-top:6px;max-height:200px;overflow-y:auto">${subjChecks}</div>
+          <div id="pend-subj-list"
+            style="margin-top:6px;max-height:240px;overflow-y:auto"></div>
         </div>
 
         <button class="btn btn-dark" style="width:100%" id="btn-pend-submit">
@@ -359,11 +341,77 @@ export function renderPendingPage() {
       </div>
     </div>`;
 
+  // Set de IDs de matérias selecionadas (preserva estado entre re-renders)
+  const selSubjIds = new Set();
+
+  function refreshSubjList() {
+    const selectedSegs = [...document.querySelectorAll('[name="pend-seg"]:checked')]
+      .map(cb => cb.value);
+    const wrap = document.getElementById('pend-subj-wrap');
+    const list = document.getElementById('pend-subj-list');
+    if (!wrap || !list) return;
+
+    if (!selectedSegs.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+
+    // Salva estado atual dos checkboxes antes de re-renderizar
+    document.querySelectorAll('[name="pend-subj"]').forEach(cb => {
+      if (cb.checked) selSubjIds.add(cb.value);
+      else            selSubjIds.delete(cb.value);
+    });
+
+    let html = '';
+    selectedSegs.forEach(segId => {
+      const seg      = state.segments.find(s => s.id === segId);
+      const segAreas = (state.areas ?? []).filter(a => {
+        const sIds = a.segmentIds ?? [];
+        return sIds.length === 0 || sIds.includes(segId);
+      });
+      const subjsForSeg = segAreas.flatMap(a =>
+        (state.subjects ?? []).filter(s => s.areaId === a.id)
+      );
+      if (!subjsForSeg.length) {
+        html += `<div style="font-size:12px;color:var(--t3);margin:8px 0">
+          ${h(seg?.name)}: nenhuma matéria cadastrada.</div>`;
+        return;
+      }
+      html += `<div style="font-size:11px;font-weight:700;color:var(--accent);
+        text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px">
+        ${h(seg?.name ?? segId)}</div>`;
+      segAreas.forEach(area => {
+        const aSubjs = (state.subjects ?? []).filter(s => s.areaId === area.id);
+        if (!aSubjs.length) return;
+        html += `<div style="font-size:11px;font-weight:600;color:var(--t2);
+          margin:6px 0 2px;padding-left:4px">${h(area.name)}</div>`;
+        aSubjs.forEach(s => {
+          html += `<label style="display:flex;align-items:center;gap:6px;font-size:13px;
+            cursor:pointer;padding:3px 0 3px 12px;user-select:none">
+            <input type="checkbox" name="pend-subj" value="${s.id}"
+              ${selSubjIds.has(s.id) ? 'checked' : ''}>
+            ${h(s.name)}
+          </label>`;
+        });
+      });
+    });
+
+    list.innerHTML = html || `<p style="font-size:12px;color:var(--t3)">
+      Nenhuma matéria cadastrada para os níveis selecionados.</p>`;
+  }
+
+  document.querySelectorAll('[name="pend-seg"]').forEach(cb => {
+    cb.addEventListener('change', refreshSubjList);
+  });
+
   document.getElementById('btn-pend-submit')?.addEventListener('click', async () => {
-    const name       = document.getElementById('pend-name')?.value?.trim();
-    const celular    = document.getElementById('pend-celular')?.value?.trim();
-    const subjectIds = [...document.querySelectorAll('[name="pend-subj"]:checked')]
-      .map(el => el.value);
+    const name    = document.getElementById('pend-name')?.value?.trim();
+    const celular = document.getElementById('pend-celular')?.value?.trim();
+
+    // Captura estado final dos checkboxes
+    document.querySelectorAll('[name="pend-subj"]').forEach(cb => {
+      if (cb.checked) selSubjIds.add(cb.value);
+      else            selSubjIds.delete(cb.value);
+    });
+    const subjectIds = [...selSubjIds];
 
     if (!name) { alert('Informe seu nome completo.'); return; }
 
@@ -373,7 +421,10 @@ export function renderPendingPage() {
 
     try {
       await updatePendingTeacher(authState.user.uid, { name, celular, subjectIds });
-      if (msg) { msg.textContent = '✓ Dados enviados! Aguarde a aprovação do administrador.'; msg.style.display = ''; }
+      if (msg) {
+        msg.textContent = '✓ Dados enviados! Aguarde a aprovação do administrador.';
+        msg.style.display = '';
+      }
       if (btn) btn.textContent = 'Enviado';
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = 'Enviar dados'; }

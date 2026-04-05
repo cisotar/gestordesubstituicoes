@@ -100,9 +100,12 @@ export function renderMySchedule() {
 function _buildGrid(seg, teacher) {
   if (!seg) return '';
 
-  // Todos os períodos do segmento (manhã + tarde), ordenados por horário
+  // Apenas turnos configurados explicitamente para este segmento
+  const configuredTurnos = Object.keys(state.periodConfigs?.[seg.id] ?? {});
+  const turnosToUse = configuredTurnos.length > 0 ? configuredTurnos : [seg.turno ?? 'manha'];
+
   const seen = new Set();
-  const periodos = ['manha', 'tarde']
+  const periodos = turnosToUse
     .flatMap(turno =>
       getPeriodos(seg.id, turno).map(p => ({ ...p, turno, slot: `${seg.id}|${turno}|${p.aulaIdx}` }))
     )
@@ -206,9 +209,15 @@ export function openMyScheduleModal(segId, turno, aulaIdx, day, teacherId) {
 
   const slot = `${segId}|${turno}|${aulaIdx}`;
 
-  // Matérias do professor
+  // Matérias do professor filtradas pelo segmento atual
   const mySubjects = (teacher.subjectIds ?? [])
-    .map(sid => state.subjects.find(s => s.id === sid)).filter(Boolean);
+    .map(sid => state.subjects.find(s => s.id === sid))
+    .filter(s => {
+      if (!s) return false;
+      const area = state.areas.find(a => a.id === s.areaId);
+      const sIds = area?.segmentIds ?? [];
+      return sIds.length === 0 || sIds.includes(segId);
+    });
 
   const subjOpts = mySubjects.length > 0
     ? `<option value="">Selecione a matéria…</option>` +
@@ -249,10 +258,7 @@ export function openMyScheduleModal(segId, turno, aulaIdx, day, teacherId) {
       </div>
       <div class="fld">
         <label class="lbl">Ano / Série</label>
-        <select class="inp" id="mys-grade" onchange="
-          const seg = document.querySelector('[data-seg]');
-          import('./my-schedule.js').then(m => m.onMysGradeChange('${segId}', this.value))
-        ">${gradeOpts}</select>
+        <select class="inp" id="mys-grade">${gradeOpts}</select>
       </div>
       <div class="fld">
         <label class="lbl">Turma</label>
@@ -275,6 +281,9 @@ export function openMyScheduleModal(segId, turno, aulaIdx, day, teacherId) {
 
   overlay.classList.add('on');
 
+  document.getElementById('mys-grade')?.addEventListener('change', e => {
+    onMysGradeChange(segId, e.target.value);
+  });
   document.getElementById('mys-save-btn')?.addEventListener('click', () => {
     saveMySchedule(segId, turno, aulaIdx, day, teacherId);
   });
