@@ -230,11 +230,20 @@ export function renderSettings() {
   const el = document.getElementById('settings-out');
   if (!el) return;
   switch (state.stab) {
-    case 'segments':  el.innerHTML = tabSegments();  break;
-    case 'periods':   el.innerHTML = tabPeriods();   break;
+    case 'segments':    el.innerHTML = tabSegments();    break;
+    case 'periods':     el.innerHTML = tabPeriods();     break;
     case 'disciplines': el.innerHTML = tabDisciplines(); break;
-    case 'teachers':  el.innerHTML = tabTeachers();  break;
-    case 'schedules': el.innerHTML = tabSchedules(); break;
+    case 'teachers':    el.innerHTML = tabTeachers();    break;
+    case 'schedules':   el.innerHTML = tabSchedules();   break;
+    case 'admin':
+      el.innerHTML = tabAdmin();
+      import('./auth.js').then(({ openPendingManager, openAdminManager }) => {
+        document.getElementById('settings-btn-pending')
+          ?.addEventListener('click', openPendingManager);
+        document.getElementById('settings-btn-admins')
+          ?.addEventListener('click', openAdminManager);
+      });
+      break;
   }
 }
 

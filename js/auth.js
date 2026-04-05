@@ -391,7 +391,7 @@ async function openOwnProfile() {
 
 // ─── Modal: Gerenciar admins ──────────────────────────────────────────────────
 
-async function openAdminManager() {
+export async function openAdminManager() {
   const overlay = document.getElementById('overlay');
   const body    = document.getElementById('modal-body');
   if (!overlay || !body) return;
