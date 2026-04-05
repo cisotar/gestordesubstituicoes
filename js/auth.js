@@ -33,6 +33,8 @@ export const isPending     = () => authState.role === 'pending';
 
 // ─── Inicialização ────────────────────────────────────────────────────────────
 
+let _authReady = false; // true após a primeira resolução
+
 export function initAuth() {
   return new Promise(resolve => {
     onAuthStateChanged(auth, async user => {
@@ -48,7 +50,21 @@ export function initAuth() {
       renderAuthBar();
       updateAdminUI();
       _updatePendingBadge();
-      resolve();
+
+      if (!_authReady) {
+        // Primeira carga: app.js controla a navegação inicial
+        _authReady = true;
+        resolve();
+      } else {
+        // Login/logout após a carga inicial → navega conforme role
+        import('./nav.js').then(({ navigate }) => {
+          if (authState.role === 'pending') {
+            navigate('pending');
+          } else {
+            navigate('calendar');
+          }
+        });
+      }
     });
   });
 }
@@ -283,14 +299,34 @@ export function renderPendingPage() {
   if (!el) return;
 
   const subjects = state.subjects ?? [];
-  const subjChecks = subjects.length
-    ? subjects.map(s => `
+  const areas    = state.areas    ?? [];
+
+  let subjChecks;
+  if (!subjects.length) {
+    subjChecks = `<p style="font-size:12px;color:var(--t3)">Nenhuma matéria cadastrada ainda. O admin poderá associar após a aprovação.</p>`;
+  } else {
+    // Agrupa por área; matérias sem área ficam num grupo genérico
+    const byArea = {};
+    subjects.forEach(s => {
+      const key = s.areaId ?? '__sem_area__';
+      (byArea[key] ??= []).push(s);
+    });
+    subjChecks = Object.entries(byArea).map(([areaId, subs]) => {
+      const area = areas.find(a => a.id === areaId);
+      const header = area
+        ? `<div style="font-size:11px;font-weight:700;color:var(--t3);
+            text-transform:uppercase;letter-spacing:.05em;
+            margin:10px 0 4px">${h(area.name)}</div>`
+        : '';
+      const checks = subs.map(s => `
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;
           cursor:pointer;padding:3px 0;user-select:none">
           <input type="checkbox" name="pend-subj" value="${s.id}">
           ${h(s.name)}
-        </label>`).join('')
-    : `<p style="font-size:12px;color:var(--t3)">Nenhuma matéria cadastrada ainda. O admin poderá associar após a aprovação.</p>`;
+        </label>`).join('');
+      return header + checks;
+    }).join('');
+  }
 
   el.innerHTML = `
     <div style="max-width:480px;margin:48px auto;padding:0 16px">
@@ -336,7 +372,7 @@ export function renderPendingPage() {
     if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
 
     try {
-      await updatePendingTeacher(authState.user.email, { name, celular, subjectIds });
+      await updatePendingTeacher(authState.user.uid, { name, celular, subjectIds });
       if (msg) { msg.textContent = '✓ Dados enviados! Aguarde a aprovação do administrador.'; msg.style.display = ''; }
       if (btn) btn.textContent = 'Enviado';
     } catch (e) {

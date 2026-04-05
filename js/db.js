@@ -222,15 +222,16 @@ export async function getTeacherByEmail(email) {
 
 /**
  * Registra um professor pendente de aprovação.
- * Se já existe entrada para esse e-mail, não duplica.
+ * Usa o UID do Firebase como ID do documento.
+ * Se já existe entrada para esse UID, não duplica.
  */
 export async function requestTeacherAccess(user) {
-  const key = _emailKey(user.email);
-  const ref  = doc(db, 'pending_teachers', key);
+  const ref  = doc(db, 'pending_teachers', user.uid);
   const snap = await getDoc(ref);
   if (snap.exists()) return; // já registrado
   await setDoc(ref, {
-    id:          key,
+    id:          user.uid,
+    uid:         user.uid,
     email:       user.email.toLowerCase(),
     name:        user.displayName ?? '',
     photoURL:    user.photoURL    ?? '',
@@ -292,9 +293,8 @@ export async function approveTeacher(pendingId) {
 }
 
 /** Atualiza dados de um professor pendente (nome, celular, subjectIds) */
-export async function updatePendingTeacher(email, data) {
-  const key = _emailKey(email);
-  await setDoc(doc(db, 'pending_teachers', key), data, { merge: true });
+export async function updatePendingTeacher(uid, data) {
+  await setDoc(doc(db, 'pending_teachers', uid), data, { merge: true });
 }
 
 /** Rejeita e remove um professor pendente */

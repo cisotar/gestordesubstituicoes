@@ -18,10 +18,10 @@ service cloud.firestore {
             .hasOnly(['celular', 'whatsapp', 'subjectIds']);
     }
 
-    // ── Pendentes: admin lê/escreve; professor acessa apenas o próprio doc ──
+    // ── Pendentes: admin lê/escreve; professor acessa apenas o próprio doc (por UID) ──
     match /pending_teachers/{docId} {
       allow read, write: if isAdmin()
-        || (request.auth != null && docId == emailToKey(request.auth.token.email));
+        || (request.auth != null && request.auth.uid == docId);
     }
 
     // ── Somente admins ───────────────────────────────────────────────────────
