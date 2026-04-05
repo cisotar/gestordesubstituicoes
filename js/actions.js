@@ -295,11 +295,25 @@ export function removeSchedule(id) {
  */
 export function addAreaDisc(name, segmentIds = []) {
   if (!name?.trim()) return;
-  if (state.areas.find(a => a.name.toLowerCase() === name.trim().toLowerCase())) {
-    toast('Área já existe.', 'warn'); return;
+
+  // Permite o mesmo nome em segmentos diferentes; bloqueia só se colidir no mesmo segmento
+  const isDup = state.areas.some(a => {
+    if (a.name.toLowerCase() !== name.trim().toLowerCase()) return false;
+    const aSegs = a.segmentIds ?? [];
+    if (segmentIds.length === 0 && aSegs.length === 0) return true; // ambos sem segmento
+    return segmentIds.some(sid => aSegs.includes(sid));
+  });
+  if (isDup) { toast('Área já existe neste segmento.', 'warn'); return; }
+
+  // Prefixo no ID baseado no segmento (ex: "ef_", "em_")
+  let idPrefix = '';
+  if (segmentIds.length === 1) {
+    const seg = state.segments.find(s => s.id === segmentIds[0]);
+    if (seg) idPrefix = seg.name.split(/\s+/).map(w => w[0].toLowerCase()).join('') + '_';
   }
+
   const colorIdx = state.areas.length % 9;
-  state.areas.push({ id: uid(), name: name.trim(), colorIdx, segmentIds });
+  state.areas.push({ id: idPrefix + uid(), name: name.trim(), colorIdx, segmentIds });
   saveState(`Área '${name.trim()}' criada`);
   import('./render.js').then(({ renderSettings }) => renderSettings());
 }
