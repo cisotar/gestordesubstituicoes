@@ -519,12 +519,17 @@ function tabTeachers() {
           </div>`;
       }).join('');
 
-  // Group teachers by segment
+  // Group teachers by segment — filtrado por matérias (subjectIds), não por horários
   const teachersBySegment = state.segments.map(seg => {
-    const segTurmas = new Set(seg.grades.flatMap(g => g.classes.map(c => `${g.name} ${c.letter}`)));
-    const segTeachers = state.teachers.filter(t =>
-      state.schedules.some(s => s.teacherId === t.id && segTurmas.has(s.turma))
-    ).sort((a, b) => a.name.localeCompare(b.name));
+    const segTeachers = state.teachers.filter(t => {
+      const tSubjIds = t.subjectIds ?? [];
+      return tSubjIds.some(sid => {
+        const subj = state.subjects.find(s => s.id === sid);
+        const area = subj ? state.areas.find(a => a.id === subj.areaId) : null;
+        const aSegs = area?.segmentIds ?? [];
+        return aSegs.length === 0 || aSegs.includes(seg.id);
+      });
+    }).sort((a, b) => a.name.localeCompare(b.name));
     return { seg, teachers: segTeachers };
   });
 

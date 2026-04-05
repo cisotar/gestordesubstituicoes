@@ -379,12 +379,19 @@ export function openEditSchedule(id) {
     `<option value="${t.id}" ${t.id === sched.teacherId ? 'selected' : ''}>${h(t.name)}</option>`
   ).join('');
 
+  const segId   = slotParts[0];
   const teacher = state.teachers.find(t => t.id === sched.teacherId);
   const mySubjIds = teacher?.subjectIds ?? [];
   // Inclui sempre a matéria actual do horário, mesmo que já não esteja no perfil do professor
   const subjIdSet = new Set([...mySubjIds, ...(sched.subjectId ? [sched.subjectId] : [])]);
   const mySubjs = [...subjIdSet]
-    .map(sid => state.subjects.find(s => s.id === sid)).filter(Boolean);
+    .map(sid => state.subjects.find(s => s.id === sid))
+    .filter(s => {
+      if (!s) return false;
+      const area = state.areas.find(a => a.id === s.areaId);
+      const aSegs = area?.segmentIds ?? [];
+      return aSegs.length === 0 || aSegs.includes(segId);
+    });
   const sOpts = `<option value="">— sem matéria —</option>` +
     mySubjs.map(s =>
       `<option value="${s.id}" ${s.id === sched.subjectId ? 'selected' : ''}>${h(s.name)}</option>`
