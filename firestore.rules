@@ -22,11 +22,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
       allow create: if request.auth != null
-        && request.resource.data.teacherId == request.auth.uid;
+        && ownsProfile(request.resource.data.teacherId);
       allow update: if request.auth != null
-        && resource.data.teacherId == request.auth.uid;
+        && ownsProfile(resource.data.teacherId);
       allow delete: if request.auth != null
-        && resource.data.teacherId == request.auth.uid;
+        && ownsProfile(resource.data.teacherId);
     }
 
     // ── Pendentes: admin lê/escreve; professor acessa apenas o próprio doc (por UID) ──
@@ -39,6 +39,11 @@ service cloud.firestore {
     match /admins/{doc} { allow read, write: if isAdmin(); }
 
     // ── Funções auxiliares ───────────────────────────────────────────────────
+    function ownsProfile(teacherId) {
+      let teacherDoc = get(/databases/$(database)/documents/teachers/$(teacherId));
+      return teacherDoc != null && teacherDoc.data.email.lower() == request.auth.token.email.lower();
+    }
+
     function emailToKey(email) {
       return email.lower()
         .replace('.', '_').replace('#', '_').replace('$', '_')
