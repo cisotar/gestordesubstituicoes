@@ -3,10 +3,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Leitura pública ─────────────────────────────────────────────────────
-    match /meta/{doc}      { allow read: if true; allow write: if isAdmin(); }
-    match /schedules/{doc} { allow read: if true; allow write: if isAdmin(); }
-    match /absences/{doc}  { allow read: if true; allow write: if isAdmin(); }
-    match /history/{doc}   { allow read: if true; allow write: if isAdmin(); }
+    match /meta/{doc}     { allow read: if true; allow write: if isAdmin(); }
+    match /absences/{doc} { allow read: if true; allow write: if isAdmin(); }
+    match /history/{doc}  { allow read: if true; allow write: if isAdmin(); }
 
     // ── Professores: leitura pública; admin escreve; professor edita próprio perfil ──
     match /teachers/{docId} {
@@ -18,6 +17,18 @@ service cloud.firestore {
             .hasOnly(['celular', 'whatsapp', 'subjectIds']);
     }
 
+    // ── Horários: leitura pública; admin escreve; professor gerencia próprios slots ──
+    match /schedules/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+      allow create: if request.auth != null
+        && request.resource.data.teacherId == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.teacherId == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.teacherId == request.auth.uid;
+    }
+
     // ── Pendentes: admin lê/escreve; professor acessa apenas o próprio doc (por UID) ──
     match /pending_teachers/{docId} {
       allow read, write: if isAdmin()
@@ -25,7 +36,7 @@ service cloud.firestore {
     }
 
     // ── Somente admins ───────────────────────────────────────────────────────
-    match /admins/{doc}    { allow read, write: if isAdmin(); }
+    match /admins/{doc} { allow read, write: if isAdmin(); }
 
     // ── Funções auxiliares ───────────────────────────────────────────────────
     function emailToKey(email) {
@@ -36,11 +47,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return request.auth != null && (
-        // Admin fixo — primeiro acesso, antes de cadastrar no Firestore
         request.auth.token.email == 'contato.tarciso@gmail.com' ||
         request.auth.token.email == 'tarciso@prof.educacao.sp.gov.br' ||
         request.auth.token.email == 'fernandamarquesi@prof.educacao.sp.gov.br' ||
-        // Demais admins cadastrados na coleção /admins
         exists(/databases/$(database)/documents/admins/$(emailToKey(request.auth.token.email)))
       );
     }
