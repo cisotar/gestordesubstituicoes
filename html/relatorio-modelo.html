@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modelo — Relatório de Substituições</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      color: #1a1814;
+      background: #f0ede6;
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+    }
+
+    h2 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #9a9490;
+      margin-bottom: 10px;
+    }
+
+    /* ════════════════════════════════════
+       RELATÓRIO PDF
+    ════════════════════════════════════ */
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      width: 100%;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 16px rgba(0,0,0,.10);
+    }
+
+    /* Cabeçalho do documento (data + dia) */
+    .doc-header {
+      background: #1a1814;
+      color: #fff;
+      padding: 24px 32px 20px;
+    }
+
+    .doc-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #6b6358;
+      margin-bottom: 4px;
+    }
+
+    .doc-title {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -.01em;
+      margin-bottom: 18px;
+    }
+
+    .doc-meta {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .meta-block { display: flex; flex-direction: column; gap: 2px; }
+
+    .meta-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #6b6358;
+    }
+
+    .meta-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .meta-value.date {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    /* Bloco por professor — dentro do mesmo PDF */
+    .teacher-section {
+      border-top: 1px solid #e8e4dc;
+    }
+
+    .teacher-section:first-child {
+      border-top: none;
+    }
+
+    .teacher-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 32px 14px;
+      background: #faf9f6;
+      border-bottom: 1px solid #e8e4dc;
+    }
+
+    .teacher-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .teacher-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #1a1814;
+    }
+
+    .teacher-subjects {
+      font-size: 12px;
+      color: #7a7470;
+      margin-top: 2px;
+    }
+
+    .teacher-body { padding: 16px 32px 24px; }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      color: #9a9490;
+      margin-bottom: 10px;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      background: #f4f2ee;
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: #6b6358;
+      border-bottom: 2px solid #e0ddd6;
+    }
+
+    tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #ece9e2;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    .td-aula {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: #4a4540;
+      white-space: nowrap;
+    }
+
+    .td-horario { font-size: 11px; color: #7a7470; white-space: nowrap; }
+    .td-turma   { font-weight: 700; }
+    .td-sub-ok  { font-weight: 700; color: #065F46; }
+    .td-sub-no  { font-weight: 600; color: #B91C1C; }
+
+    .doc-footer {
+      padding: 12px 32px;
+      border-top: 1px solid #ece9e2;
+      font-size: 10px;
+      color: #9a9490;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ════════════════════════════════════
+       WHATSAPP
+    ════════════════════════════════════ */
+    .wpp-wrapper {
+      max-width: 480px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .wpp-phone {
+      background: #e5ddd5;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 16px rgba(0,0,0,.12);
+    }
+
+    .wpp-topbar {
+      background: #075e54;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .wpp-topbar-av {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #25d366;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .wpp-body {
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 200px;
+    }
+
+    .wpp-bubble {
+      background: #fff;
+      border-radius: 0 8px 8px 8px;
+      padding: 10px 14px;
+      max-width: 88%;
+      box-shadow: 0 1px 2px rgba(0,0,0,.12);
+      font-size: 13px;
+      line-height: 1.55;
+      color: #1a1814;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .wpp-time {
+      font-size: 10px;
+      color: #8a8a8a;
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    @media print {
+      body { background: #fff; padding: 0; gap: 0; }
+      .page { box-shadow: none; border-radius: 0; }
+      .wpp-wrapper { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════ RELATÓRIO ════════ -->
+<div style="max-width:720px;margin:0 auto;width:100%">
+  <h2>Modelo A — Relatório PDF (um documento, vários professores)</h2>
+</div>
+
+<div class="page">
+
+  <!-- Cabeçalho do documento: data e dia apenas -->
+  <div class="doc-header">
+    <div class="doc-label">GestãoEscolar</div>
+    <div class="doc-title">Relatório de Substituições</div>
+    <div class="doc-meta">
+      <div class="meta-block">
+        <span class="meta-label">Data</span>
+        <span class="meta-value date">07</span>
+        <span class="meta-value" style="font-size:13px;color:#c8c2b8">abril de 2026</span>
+      </div>
+      <div class="meta-block">
+        <span class="meta-label">Dia da semana</span>
+        <span class="meta-value">Terça-feira</span>
+      </div>
+      <div class="meta-block" style="margin-left:auto;text-align:right">
+        <span class="meta-label">Total de ausências</span>
+        <span class="meta-value">2 professores · 7 aulas</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Professor 1 ── -->
+  <div class="teacher-section">
+    <div class="teacher-header">
+      <div class="teacher-avatar" style="background:#dbeafe;color:#1e40af">A</div>
+      <div>
+        <div class="teacher-name">Ana Paula Ferreira</div>
+        <div class="teacher-subjects">Geografia · História</div>
+      </div>
+    </div>
+    <div class="teacher-body">
+      <div class="section-label">Aulas a substituir</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Aula</th><th>Horário</th><th>Disciplina</th><th>Turma</th><th>Substituto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-aula">1ª aula</td>
+            <td class="td-horario">07:00–07:50</td>
+            <td>Geografia</td>
+            <td class="td-turma">9 A</td>
+            <td class="td-sub-ok">Carlos Mendes</td>
+          </tr>
+          <tr>
+            <td class="td-aula">2ª aula</td>
+            <td class="td-horario">07:50–08:40</td>
+            <td>História</td>
+            <td class="td-turma">8 B</td>
+            <td class="td-sub-ok">Carlos Mendes</td>
+          </tr>
+          <tr>
+            <td class="td-aula">3ª aula</td>
+            <td class="td-horario">08:40–09:30</td>
+            <td>Geografia</td>
+            <td class="td-turma">7 A</td>
+            <td class="td-sub-no">— sem substituto</td>
+          </tr>
+          <tr>
+            <td class="td-aula">5ª aula</td>
+            <td class="td-horario">10:10–11:00</td>
+            <td>Geografia</td>
+            <td class="td-turma">9 B</td>
+            <td class="td-sub-ok">Roberto Lima</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Professor 2 ── -->
+  <div class="teacher-section">
+    <div class="teacher-header">
+      <div class="teacher-avatar" style="background:#dcfce7;color:#166534">M</div>
+      <div>
+        <div class="teacher-name">Marcos Vinícius Costa</div>
+        <div class="teacher-subjects">Matemática</div>
+      </div>
+    </div>
+    <div class="teacher-body">
+      <div class="section-label">Aulas a substituir</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Aula</th><th>Horário</th><th>Disciplina</th><th>Turma</th><th>Substituto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-aula">2ª aula</td>
+            <td class="td-horario">07:50–08:40</td>
+            <td>Matemática</td>
+            <td class="td-turma">6 A</td>
+            <td class="td-sub-ok">Fernanda Dias</td>
+          </tr>
+          <tr>
+            <td class="td-aula">4ª aula</td>
+            <td class="td-horario">09:30–10:10</td>
+            <td>Matemática</td>
+            <td class="td-turma">6 B</td>
+            <td class="td-sub-no">— sem substituto</td>
+          </tr>
+          <tr>
+            <td class="td-aula">5ª aula</td>
+            <td class="td-horario">10:10–11:00</td>
+            <td>Matemática</td>
+            <td class="td-turma">7 B</td>
+            <td class="td-sub-ok">Fernanda Dias</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>Gerado em 7 de abril de 2026</span>
+    <span>GestãoEscolar · gestordesubstituicoes.web.app</span>
+  </div>
+
+</div>
+
+
+<!-- ════════ WHATSAPP ════════ -->
+<div class="wpp-wrapper">
+  <h2>Modelo B — Mensagem de WhatsApp</h2>
+
+  <div class="wpp-phone">
+    <div class="wpp-topbar">
+      <div class="wpp-topbar-av">👥</div>
+      <span>Substituições — Colégio</span>
+    </div>
+    <div class="wpp-body">
+      <div class="wpp-bubble">📋 *Substituições — Terça, 07/04/2026*
+
+━━━━━━━━━━━━━━━━━
+👤 *Ana Paula Ferreira*
+_Geografia · História_
+
+• 1ª aula (07:00–07:50) — 9 A → ✅ Carlos Mendes
+• 2ª aula (07:50–08:40) — 8 B → ✅ Carlos Mendes
+• 3ª aula (08:40–09:30) — 7 A → ⚠️ sem substituto
+• 5ª aula (10:10–11:00) — 9 B → ✅ Roberto Lima
+
+━━━━━━━━━━━━━━━━━
+👤 *Marcos Vinícius Costa*
+_Matemática_
+
+• 2ª aula (07:50–08:40) — 6 A → ✅ Fernanda Dias
+• 4ª aula (09:30–10:10) — 6 B → ⚠️ sem substituto
+• 5ª aula (10:10–11:00) — 7 B → ✅ Fernanda Dias
+━━━━━━━━━━━━━━━━━
+<span style="font-size:11px;color:#8a8a8a">GestãoEscolar</span></div>
+      <div class="wpp-time">08:12 ✓✓</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
